@@ -1,0 +1,11 @@
+# All the default Omarchy aliases and functions
+# (don't mess with these directly, just overwrite them here!)
+source ~/.local/share/omarchy/default/bash/rc
+
+# Add your own exports, aliases, and functions here.
+#
+alias rm='trash -v'
+alias cat='bat'
+
+# Git
+alias gst='git status'
