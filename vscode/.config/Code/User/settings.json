@@ -1,0 +1,39 @@
+{
+  "workbench.colorTheme": "B'nT",
+  "workbench.secondarySideBar.defaultVisibility": "hidden",
+  "editor.lineNumbers": "relative",
+  // sidebar to right
+  "workbench.sideBar.location": "right",
+  // hide sidebar
+  "workbench.activityBar.location": "hidden",
+  // hide status bar
+  "workbench.statusBar.visible": false,
+  // hide scrollbar
+  "editor.scrollbar.vertical": "hidden",
+  "editor.scrollbar.horizontal": "hidden",
+  // hide minimap
+  "editor.minimap.enabled": false,
+  // hide linie highlight
+  "editor.renderLineHighlight": "none",
+  // hide cursor and other highlights in overview ruler
+  "editor.hideCursorInOverviewRuler": true,
+  "editor.overviewRulerBorder": false,
+  "editor.stickyScroll.enabled": false,
+  "editor.occurrencesHighlight": "off",
+  // hide other UI elements
+  "chat.commandCenter.enabled": false,
+  "workbench.layoutControl.enabled": false,
+  "window.customTitleBarVisibility": "never",
+  "window.titleBarStyle": "native",
+  "window.menuBarVisibility": "toggle",
+  // hide bookmarks
+  "workbench.editor.showTabs": "single",
+  // cursor settings
+  "editor.multiCursorModifier": "ctrlCmd",
+  //"editor.cursorStyle": "block",
+  "editor.cursorBlinking": "solid",
+  "editor.cursorSmoothCaretAnimation": "on",
+  "workbench.startupEditor": "none",
+  "workbench.iconTheme": "material-icon-theme",
+  "editor.formatOnSave": true,
+}
