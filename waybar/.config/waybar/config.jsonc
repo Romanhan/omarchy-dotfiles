@@ -26,7 +26,7 @@
       "7": "7",
       "8": "8",
       "9": "9",
-      "active": "󰄰"
+      "active": "󰻃"
     },
     "persistent-workspaces": {
       "1": [],
@@ -49,6 +49,7 @@
   "custom/omarchy": {
     "format": "<span font='omarchy'>\udb82\udcc7</span>",
     "on-click": "omarchy-menu",
+    "on-click-right": "omarchy-launch-terminal",
     "tooltip-format": "Omarchy Menu\n\nSuper + Alt + Space"
   },
   "custom/update": {
@@ -92,7 +93,7 @@
     "format": "{:L%A %H:%M}",
     "format-alt": "{:L%d %B W%V %Y}",
     "tooltip": false,
-    "on-click-right": "omarchy-cmd-tzupdate"
+    "on-click-right": "omarchy-launch-floating-terminal-with-presentation omarchy-tz-select"
   },
   "network": {
     "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],

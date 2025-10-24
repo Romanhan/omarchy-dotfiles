@@ -30,10 +30,7 @@
   opacity: 0.5;
 }
 
-#window {
-  margin-left: 10px;
-}
-
+#window,
 #tray,
 #cpu,
 #battery,
@@ -49,7 +46,7 @@
 }
 
 #custom-expand-icon {
-  margin-right: 7px;
+  margin-right: 10px;
 }
 
 tooltip {
