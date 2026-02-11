@@ -69,8 +69,8 @@
     "tooltip-format": "System updates available",
     "interval": 3600,
     "signal": 8
-},
-"cpu": {
+  },
+  "cpu": {
     "interval": 5,
     "format": "󰍛",
     "on-click": "omarchy-launch-or-focus-tui btop"
