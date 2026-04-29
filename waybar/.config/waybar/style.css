@@ -40,7 +40,8 @@
 #custom-omarchy,
 
 #custom-update,
-#custom-updates {
+#custom-updates,
+#custom-tailscale {
   min-width: 12px;
   margin: 0 7.5px;
 }
