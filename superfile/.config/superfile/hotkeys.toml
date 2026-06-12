@@ -22,8 +22,8 @@ quit = ['ctrl+c', ''] # a.k.a. "theprimeagen troller"
 cd_quit = ['Q', '']
 
 #-- Navigation
-list_up = ['k', '']
-list_down = ['j', '']
+list_up = ['k', 'ctrl+k']
+list_down = ['j', 'ctrl+j']
 page_up = ['ctrl+u','']
 page_down = ['ctrl+d','']
 
