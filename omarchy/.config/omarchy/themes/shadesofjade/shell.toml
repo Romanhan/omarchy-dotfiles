@@ -1,0 +1,148 @@
+# Omarchy Quattro surfaces for Shades of Jade.
+# Deep jade panels, a soft green active frame, and a pale jade selection
+# preserve the theme's balance between calm focus and warm detail.
+
+[bar]
+background = "#00110B"
+background-alpha = 1.0
+text = "#E6F6F0"
+active = "#D1FFB0"
+scale-with-font = true
+size-horizontal = 26
+size-vertical = 28
+
+[hyprland]
+active-border = "rgba(00a86bee) rgba(c3fcb8ee) 45deg"
+active-border-foreground = "#D1FFB0"
+
+[controls]
+normal-color = "#3E6650"
+normal-fill-alpha = 0.08
+normal-border-width = 1
+normal-border-alpha = 0.36
+
+hover-cursor-color = "#E25F4B"
+hover-cursor-fill-alpha = 0.14
+hover-cursor-border-width = 1
+hover-cursor-border-alpha = 0.58
+
+focus-color = "#FF6600"
+focus-fill-alpha = 0.16
+focus-border-width = 1
+focus-border-alpha = 0.82
+
+selected-color = "#00A86B"
+selected-fill-alpha = 0.22
+selected-border-width = 1
+selected-border-alpha = 0.58
+
+pressed-color = "#FF3370"
+pressed-fill-alpha = 0.24
+selection-color = "#D1FFB0"
+selection-fill-alpha = 0.38
+
+[spacing]
+scale = 1.0
+scale-with-font = true
+xs = 2
+md = 4
+control-padding-y = 5
+panel-padding = 10
+
+[font]
+base-size = 12
+heading = 16
+icon-large = 18
+
+[popups]
+background = "#00110B"
+background-alpha = 1.0
+text = "#C3FCB8"
+border = "rgba(00a86bee) rgba(c3fcb8ee) 90deg"
+border-alpha = 1.0
+border-width = 2
+
+[tooltip]
+background = "#00110B"
+background-alpha = 0.98
+text = "#E6F6F0"
+border = "#3E6650"
+border-alpha = 0.86
+border-width = 1
+
+[notifications]
+background = "#00110B"
+background-alpha = 1.0
+text = "#E6F6F0"
+border = "rgba(00a86bee) rgba(c3fcb8ee) 90deg"
+border-alpha = 1.0
+border-width = 2
+countdown = "#FF3370"
+
+[launcher]
+background = "#00110B"
+background-alpha = 1.0
+text = "#00A86B"
+border = "rgba(00a86bee) rgba(c3fcb8ee) 90deg"
+border-alpha = 1.0
+border-width = 2
+scrim = "#00110B"
+scrim-alpha = 0.0
+selected-background = "#D1FFB0"
+selected-background-alpha = 0.90
+selected-text = "#3E6650"
+selected-border = "#D1FFB0"
+selected-border-alpha = 0.72
+selected-border-width = 1
+
+[menu]
+background = "#00110B"
+background-alpha = 1.0
+text = "#00A86B"
+border = "rgba(00a86bee) rgba(c3fcb8ee) 90deg"
+border-alpha = 1.0
+border-width = 2
+scrim = "#00110B"
+scrim-alpha = 0.0
+selected-background = "#D1FFB0"
+selected-background-alpha = 0.90
+selected-text = "#3E6650"
+selected-border = "#D1FFB0"
+selected-border-alpha = 0.72
+selected-border-width = 1
+
+[polkit]
+background = "#00110B"
+background-alpha = 1.0
+text = "#E6F6F0"
+text-error = "#FF3370"
+border = "rgba(00a86bee) rgba(c3fcb8ee) 90deg"
+border-error = "#FF3370"
+border-alpha = 1.0
+border-width = 2
+scrim = "#00110B"
+scrim-alpha = 0.52
+accent = "#D1FFB0"
+
+[lock]
+background = "#002215"
+background-alpha = 1.0
+text = "#C3FCB8"
+placeholder = "#E6F6F0B3"
+text-error = "#FF3370"
+border = "rgba(00a86bee) rgba(c3fcb8ee) 90deg"
+border-active = "rgba(00a86bee) rgba(c3fcb8ee) 90deg"
+border-error = "#FF3370"
+border-alpha = 1.0
+border-width = 2
+selection = "#00A86B"
+selection-alpha = 0.48
+
+[image-picker]
+scrim = "#00110B"
+scrim-alpha = 0.52
+text = "#E6F6F0"
+selected-border = "#D1FFB0"
+selected-border-alpha = 1.0
+unselected-border = "#3E6650"
+unselected-border-alpha = 0.86
