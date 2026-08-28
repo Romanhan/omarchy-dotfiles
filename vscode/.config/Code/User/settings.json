@@ -1,5 +1,5 @@
-{
-    "workbench.colorTheme": "Hackerman",
+{ "workbench.colorTheme": "Ship at Sea",
+    
     "workbench.secondarySideBar.defaultVisibility": "hidden",
     "editor.lineNumbers": "relative",
     // sidebar to right
@@ -41,4 +41,9 @@
         "editor.defaultFormatter": null
     },
     "editor.linkedEditing": true,
+    "terminal.integrated.fontFamily": "MesloLGS NF, SF Mono, Monaco, 'Courier New', monospace",
+    "terminal.integrated.fontSize": 13,
+    "terminal.integrated.lineHeight": 1.2,
+    "terminal.integrated.cursorStyle": "line",
+    "terminal.integrated.cursorBlinking": true,
 }
