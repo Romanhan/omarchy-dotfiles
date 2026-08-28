@@ -1,0 +1,79 @@
+{
+  "bar": {
+    "centerAnchor": "",
+    "layout": {
+      "center": [
+        {
+          "id": "omarchy.indicators"
+        },
+        {
+          "format": "dddd HH:mm",
+          "formatAlt": "d MMMM 'W'ww yyyy",
+          "id": "romanhan.clock",
+          "verticalFormat": "HH\n—\nmm"
+        },
+        {
+          "id": "omarchy.keyboard-layout"
+        },
+        {
+          "id": "omarchy.system-update"
+        },
+        {
+          "id": "romanhan.media"
+        }
+      ],
+      "left": [
+        {
+          "id": "omarchy.workspaces",
+          "type": "qml",
+          "source": "~/.config/omarchy/plugins/romanhan.bar/widgets/Workspaces.qml"
+        }
+      ],
+      "right": [
+        {
+          "id": "island-reveal",
+          "type": "qml"
+        },
+        {
+          "id": "romanhan.tray"
+        },
+        {
+          "id": "romanhan.tailscale"
+        },
+        {
+          "id": "romanhan.agents"
+        },
+        {
+          "id": "romanhan.bluetooth"
+        },
+        {
+          "id": "romanhan.network"
+        },
+        {
+          "id": "romanhan.audio"
+        },
+        {
+          "id": "romanhan.monitor"
+        },
+        {
+          "id": "romanhan.power"
+        }
+      ]
+    },
+    "position": "top",
+    "transparent": false,
+    "id": "romanhan.bar"
+  },
+  "idle": {
+    "lock": 300,
+    "screensaver": 150
+  },
+  "plugins": [],
+  "version": 1,
+  "disabledPlugins": [
+    "omarchy.media"
+  ],
+  "cloneSourceRestores": [
+    "romanhan.media"
+  ]
+}

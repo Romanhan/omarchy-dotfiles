@@ -1,0 +1,21 @@
+# Omarchy shell overrides (layered on top of the active theme).
+# User keys here always win over the theme; survives theme switches.
+# The shell watches this file and applies changes live on save.
+
+# Bar height / thickness (px).
+# size-horizontal = top/bottom bar height; size-vertical = left/right bar width.
+# With scale-with-font on, both grow/shrink with [font] base-size.
+[bar]
+size-horizontal = 26
+size-vertical = 28
+scale-with-font = true
+
+# Bar colors (falls back to the theme's colors.toml if unset).
+# background       = "#0D1319"
+# background-alpha = 1.0
+# text             = "#F2ECCD"
+# active           = "#cf5a44"
+
+# Text & icon scale. Every bar type size derives from base-size (default 12px).
+# [font]
+# base-size = 12

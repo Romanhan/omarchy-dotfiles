@@ -20,7 +20,7 @@ done
 echo "=== Stowing dotfiles ==="
 cd "$DOTFILES_DIR" || exit 1
 
-STOW_PACKAGES=("kitty" "hypr" "superfile")
+STOW_PACKAGES=("bash" "kitty" "hypr" "superfile" "omarchy")
 for package in "${STOW_PACKAGES[@]}"; do
   if [ -d "$package" ]; then
     echo "Stowing $package..."
