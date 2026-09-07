@@ -1,5 +1,10 @@
 # Omarchy bar
 
+> This clone is Roman's dynamic-island layer. `Bar.qml` is generated from the
+> currently installed stock bar plus `island.patch`; run `./rebuild` after an
+> Omarchy update. The post-update hook does this automatically and leaves the
+> existing working bar untouched if the patch no longer applies.
+
 This is the Quickshell implementation of the Omarchy status bar. It is
 shipped as a first-party plugin of [`omarchy-shell`](../../README.md), the
 long-running shell host. The bar is mounted at startup and lives inside

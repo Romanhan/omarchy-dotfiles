@@ -51,6 +51,7 @@ PanelWindow {
   property bool popoutSwitchClosing: false
   property bool focusPrimed: false
   property real _grow: 0
+  property rect morphStartRect: Qt.rect(0, 0, 0, 0)
 
   // Item that should take keyboard focus once the panel maps. Typically a
   // PanelKeyCatcher inside the panel content. Layer-shell grants focus to the
@@ -148,17 +149,14 @@ PanelWindow {
   }
   readonly property real anchorW: anchorItem ? anchorItem.width : 0
   readonly property real anchorH: anchorItem ? anchorItem.height : 0
-  // Pill geometry, discovered by walking up from the anchor widget to the bar's
-  // island pill (the ancestor whose parent fills the window). Avoids depending
-  // on the bar controller, which doesn't expose custom QML properties.
+  // Pill geometry, discovered through the explicit object name owned by the
+  // custom bar. Do not infer it from dimensions: the full-width bar surface is
+  // also an ancestor and would make the first morph frame cover the screen.
   function findPill() {
     if (!anchorItem || !anchorWindow) return null
     var o = anchorItem
-    while (o && o.parent) {
-      if (o.parent.width === anchorWindow.width
-          && o.parent.height === anchorWindow.height
-          && o.parent !== anchorWindow)
-        return o
+    while (o) {
+      if (o.objectName === "romanhanIslandPill") return o
       o = o.parent
     }
     return null
@@ -167,6 +165,13 @@ PanelWindow {
     var p = findPill()
     if (!p || !anchorWindow) return Qt.rect(0, 0, 0, 0)
     var pos = p.mapToItem(anchorWindow.contentItem, 0, 0)
+    // The bar's floating edge margin lives on the layer surface, outside the
+    // content coordinate space used by mapToItem(). Apply the same offset to
+    // the panel morph so its top/bottom gap matches the collapsed island.
+    var edgeGap = bar && (barPos === "top" || barPos === "bottom")
+      ? Number(bar.islandGap) || 0 : 0
+    if (barPos === "top") pos.y += edgeGap
+    else if (barPos === "bottom") pos.y -= edgeGap
     return Qt.rect(pos.x, pos.y, p.width, p.height)
   }
   readonly property real pillLeft:   pillRect.x
@@ -218,26 +223,29 @@ PanelWindow {
   readonly property real barH: anchorWindow ? anchorWindow.height : 0
   readonly property point cardOrigin: {
     if (!anchorItem || !bar) return Qt.point(margin, margin)
-    var R = Style.cornerRadius
     var x = 0, y = 0
     if (centerOnBar && (barPos === "top" || barPos === "bottom")) {
       x = screenW / 2 - contentWidth / 2
-      y = barPos === "bottom" ? screenH - barH - contentHeight : barH
+      // Centering changes only the horizontal alignment; use the same
+      // island edge as other panels so the calendar grows from the pill.
+      y = barPos === "bottom"
+        ? (pillRect.height > 0 ? pillBottom - contentHeight : screenH - barH - contentHeight)
+        : (pillRect.height > 0 ? pillTop : barH)
     } else if (centerOnBar) {
       x = barPos === "left" ? barW : screenW - barW - contentWidth
       y = screenH / 2 - contentHeight / 2
     } else if (barPos === "bottom") {
-      x = root.pillRight - contentWidth - R
-      y = screenH - barH - contentHeight
+      x = root.pillLeft + (pillRect.width - contentWidth) / 2
+      y = root.pillRect.height > 0 ? root.pillBottom - contentHeight : screenH - barH - contentHeight
     } else if (barPos === "left") {
       x = barW
-      y = root.pillBottom - contentHeight - R
+      y = root.pillTop + (pillRect.height - contentHeight) / 2
     } else if (barPos === "right") {
       x = screenW - barW - contentWidth
-      y = root.pillBottom - contentHeight - R
+      y = root.pillTop + (pillRect.height - contentHeight) / 2
     } else { // "top" (default)
-      x = root.pillRight - contentWidth - R
-      y = barH
+      x = root.pillLeft + (pillRect.width - contentWidth) / 2
+      y = root.pillRect.height > 0 ? root.pillTop : barH
     }
     x = Math.max(margin, Math.min(x, screenW - contentWidth - margin))
     y = Math.max(margin, Math.min(y, screenH - contentHeight - margin))
@@ -262,13 +270,17 @@ PanelWindow {
     }
     if (!bar) return
     if (open) {
+      morphStartRect = pillRect
       popoutSwitchClosing = false
       popoutSwitching = bar.activePopout && bar.activePopout !== coordinatorKey
       bar.requestPopout(coordinatorKey)
+      if (typeof bar.beginIslandPanel === "function")
+        bar.beginIslandPanel(coordinatorKey, contentWidth)
       if (popoutSwitching) popoutSwitchTimer.restart()
     } else {
       popoutSwitchClosing = !!(owner && owner.popoutSwitchClosing)
       popoutSwitching = false
+      if (typeof bar.endIslandPanel === "function") bar.endIslandPanel(coordinatorKey)
       if (bar.activePopout === coordinatorKey) bar.releasePopout(coordinatorKey)
       if (popoutSwitchClosing) closeSwitchTimer.restart()
     }
@@ -407,24 +419,24 @@ PanelWindow {
   Rectangle {
     id: card
     clip: true
-    readonly property bool _lr: root.barPos === "left" || root.barPos === "right"
-    x: _lr
-       ? (root.barPos === "right"
-            ? root.cardOrigin.x + root.contentWidth - root.contentWidth * root._grow
-            : root.cardOrigin.x)
-       : root.cardOrigin.x
-    y: _lr
-       ? root.cardOrigin.y
-       : (root.barPos === "bottom"
-            ? root.cardOrigin.y + root.contentHeight - root.contentHeight * root._grow
-            : root.cardOrigin.y)
-    width: _lr ? root.contentWidth * root._grow : root.contentWidth
-    height: _lr ? root.contentHeight : root.contentHeight * root._grow
-    color: Color.popups.background
-    topLeftRadius: (root.barPos === "top" || root.barPos === "left") ? 0 : Style.cornerRadius
-    topRightRadius: (root.barPos === "top" || root.barPos === "right") ? 0 : Style.cornerRadius
-    bottomLeftRadius: (root.barPos === "bottom" || root.barPos === "left") ? 0 : Style.cornerRadius
-    bottomRightRadius: (root.barPos === "bottom" || root.barPos === "right") ? 0 : Style.cornerRadius
+    readonly property real startWidth: root.morphStartRect.width > 0 ? root.morphStartRect.width : root.bar.barSize
+    readonly property real startHeight: root.morphStartRect.height > 0 ? root.morphStartRect.height : root.bar.barSize
+    readonly property real startX: root.morphStartRect.width > 0
+      ? root.morphStartRect.x : root.cardOrigin.x + (root.contentWidth - startWidth) / 2
+    readonly property real startY: root.morphStartRect.height > 0
+      ? root.morphStartRect.y : root.cardOrigin.y
+    readonly property real startRadius: Math.min(startWidth, startHeight) / 2
+    function mix(from, to) { return from + (to - from) * root._grow }
+
+    x: mix(startX, root.cardOrigin.x)
+    y: mix(startY, root.cardOrigin.y)
+    width: mix(startWidth, root.contentWidth)
+    height: mix(startHeight, root.contentHeight)
+    color: root.bar ? root.bar.background : Color.popups.background
+    topLeftRadius: mix(startRadius, Style.cornerRadius)
+    topRightRadius: mix(startRadius, Style.cornerRadius)
+    bottomLeftRadius: mix(startRadius, Style.cornerRadius)
+    bottomRightRadius: mix(startRadius, Style.cornerRadius)
 
     NumberAnimation { id: growAnim;    target: root; property: "_grow";  from: 0; to: 1; duration: 250; easing.type: Easing.OutQuint }
     NumberAnimation { id: shrinkAnim;  target: root; property: "_grow";  from: 1; to: 0; duration: 250; easing.type: Easing.OutQuint }
@@ -453,7 +465,9 @@ PanelWindow {
       anchors.rightMargin: root.padding
       anchors.bottomMargin: root.padding
       anchors.leftMargin: root.padding
-      opacity: root.popoutSwitching ? (root.open ? 1.0 : 0) : 1.0
+      opacity: root.popoutSwitching
+        ? (root.open ? 1.0 : 0)
+        : Math.max(0, Math.min(1, (root._grow - 0.28) / 0.72))
 
       Behavior on opacity {
         enabled: root.popoutSwitching

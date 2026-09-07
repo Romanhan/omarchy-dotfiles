@@ -12,7 +12,9 @@ BarWidget {
   id: root
   moduleName: "omarchy.tray"
 
-  property bool expanded: false
+  // The dynamic island owns disclosure. The tray follows the island instead
+  // of presenting a second, competing chevron and hover state.
+  readonly property bool expanded: bar ? bar.islandRevealed === true : false
   property bool managePopupOpen: false
   property bool trayMenuOpen: false
   property var activeTrayItem: null
@@ -233,7 +235,7 @@ BarWidget {
       id: horizontalTrayRoot
 
       readonly property int pinnedWidth: pinnedRow.implicitWidth
-      readonly property int drawerBlockWidth: root.allItems.length > 0 ? expandIcon.implicitWidth + root.drawerExtent : 0
+      readonly property int drawerBlockWidth: root.drawerCount > 0 ? root.drawerExtent : 0
 
       implicitWidth: pinnedWidth + drawerBlockWidth
       implicitHeight: root.barSize
@@ -243,10 +245,7 @@ BarWidget {
       containmentMask: QtObject {
         function contains(point: point): bool {
           if (point.y < 0 || point.y > horizontalTrayRoot.height) return false
-          // Drawer reveals leftward; chevron sits at the right end when collapsed
-          // and slides left as it opens. The visible region starts at the chevron.
-          var chevronX = root.drawerExtent - root.revealExtent
-          if (point.x >= chevronX && point.x <= horizontalTrayRoot.drawerBlockWidth) return true
+          if (point.x >= 0 && point.x <= root.revealExtent) return true
           // Pinned items, placed to the right of the drawer block.
           var pinnedStart = horizontalTrayRoot.drawerBlockWidth
           return point.x >= pinnedStart && point.x <= horizontalTrayRoot.implicitWidth
@@ -258,27 +257,11 @@ BarWidget {
         x: 0
         width: horizontalTrayRoot.drawerBlockWidth
         height: root.barSize
-        visible: root.allItems.length > 0
-
-        HoverHandler {
-          onHoveredChanged: root.expanded = hovered
-        }
-
-        BarIconButton {
-          id: expandIcon
-          bar: root.bar
-          width: implicitWidth
-          height: implicitHeight
-          x: root.drawerExtent - root.revealExtent
-          text: "\uf053"
-          onPressed: function(button) {
-            if (button === Qt.RightButton) root.managePopupOpen = !root.managePopupOpen
-          }
-        }
+        visible: root.drawerCount > 0
 
         Item {
           id: trayClip
-          x: expandIcon.width
+          x: 0
           anchors.verticalCenter: parent.verticalCenter
           width: root.drawerExtent
           height: root.barSize
@@ -320,7 +303,7 @@ BarWidget {
       id: verticalTrayRoot
 
       readonly property int pinnedHeight: pinnedCol.implicitHeight
-      readonly property int drawerBlockHeight: root.allItems.length > 0 ? expandIcon.implicitHeight + root.drawerExtent : 0
+      readonly property int drawerBlockHeight: root.drawerCount > 0 ? root.drawerExtent : 0
 
       implicitWidth: root.barSize
       implicitHeight: pinnedHeight + drawerBlockHeight
@@ -328,8 +311,7 @@ BarWidget {
       containmentMask: QtObject {
         function contains(point: point): bool {
           if (point.x < 0 || point.x > verticalTrayRoot.width) return false
-          var chevronY = root.drawerExtent - root.revealExtent
-          if (point.y >= chevronY && point.y <= verticalTrayRoot.drawerBlockHeight) return true
+          if (point.y >= 0 && point.y <= root.revealExtent) return true
           var pinnedStart = verticalTrayRoot.drawerBlockHeight
           return point.y >= pinnedStart && point.y <= verticalTrayRoot.implicitHeight
         }
@@ -340,28 +322,11 @@ BarWidget {
         y: 0
         width: root.barSize
         height: verticalTrayRoot.drawerBlockHeight
-        visible: root.allItems.length > 0
-
-        HoverHandler {
-          onHoveredChanged: root.expanded = hovered
-        }
-
-        BarIconButton {
-          id: expandIcon
-          bar: root.bar
-          width: implicitWidth
-          height: implicitHeight
-          y: root.drawerExtent - root.revealExtent
-          text: "\uf053"
-          textRotation: 90
-          onPressed: function(button) {
-            if (button === Qt.RightButton) root.managePopupOpen = !root.managePopupOpen
-          }
-        }
+        visible: root.drawerCount > 0
 
         Item {
           id: trayClip
-          y: expandIcon.height
+          y: 0
           anchors.horizontalCenter: parent.horizontalCenter
           width: root.barSize
           height: root.drawerExtent

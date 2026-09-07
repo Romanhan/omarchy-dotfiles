@@ -12,23 +12,29 @@ Item {
   id: root
 
   // The omarchy-shell host injects omarchyPath from OMARCHY_PATH.
-  // NOTE: plugin bars are loaded via Loader.source (no context bindings), and a
-  // root `required property` makes that load fail. Plain properties are set by
-  // the host's configureBar() right after load, like plugin panels.
-  property string omarchyPath: ""
+  property string omarchyPath: Quickshell.env("OMARCHY_PATH")
   // Injected by the host shell so bar slots can resolve enabled widgets.
-  property var barWidgetRegistry: null
+  property var barWidgetRegistry: fallbackBarWidgetRegistry
+  // Read-only registry view for third-party full bars; the built-in bar does
+  // not otherwise need it, but declaring it keeps clone construction atomic.
+  property var pluginRegistry: null
   // Injected by the host shell every time shell.json is reloaded. Holds the
   // `bar:` subtree: position, centerAnchor, layout. The host owns file IO;
   // the bar just renders whatever it's handed. The bar font follows the
   // OS-level fontconfig monospace binding — it is not stored in shell.json.
-  property var barConfig: null
+  property var barConfig: ({})
   // Injected by the host shell. Used for shell-wide actions such as opening
   // settings and persisting inline widget state.
   property var shell: null
   // Manifest for the active bar option. Present for custom bars and useful for
   // diagnostics; the built-in bar does not otherwise need it.
   property var manifest: null
+  QtObject {
+    id: fallbackBarWidgetRegistry
+    property var widgets: ({})
+    property int revision: 0
+    function metadataFor(id) { return null }
+  }
   // Mirrors the on-disk `bar-off` flag so the user can hide the bar without
   // killing the entire shell. Hidden panels stay mapped but park off-screen
   // without an exclusion zone; updated by the FileView watcher further down.
@@ -58,14 +64,14 @@ Item {
     "omarchy.system-update", "omarchy.indicators"
   ]
   // Vertical offset of the floating island from the screen edge.
-  property int islandGap: 3
+  property int islandGap: 1
   // Gap between the pill and the windows below it. Standalone value; 0 = pill
   // sits flush against the windows.
   property int barGap: 0
   // Height of the floating island pill; overrides Style.bar.sizeHorizontal.
   property int islandHeight: 30
   // Horizontal gap between modules inside the island pill.
-  property int islandModuleGap: Style.space(150)
+  property int islandModuleGap: Style.space(72)
   function toggleIslandReveal(): void { islandRevealed = !islandRevealed }
   IpcHandler {
     target: "romanhan.bar"
@@ -110,10 +116,9 @@ Item {
   property bool tooltipShown: false
   property int tooltipRequest: 0
   property var activePopout: null
-  // Number of popups holding the squared-corner look (open through their close
-  // animation). The corner rounds back only when this reaches zero, so the bar
-  // stays merged with the popup for the entire open+close motion.
-  
+  property var islandPanelOwner: null
+  property real islandPanelWidth: 0
+  readonly property bool islandPanelActive: islandPanelOwner !== null && islandPanelWidth > 0
   property var barDragSource: null
   property var barDragTarget: null
   property var barDragTargetGeometry: null
@@ -133,6 +138,235 @@ Item {
   property var barMoveScreen: null
   property var clickTargets: []
   property var moduleSlots: []
+  property var pluginBarApis: ({})
+  property var pluginObjectOwners: []
+
+  Component {
+    id: pluginBarApiComponent
+    PluginBarApi {
+      // Preserve the scoped stock API while exposing our island animation hooks.
+      readonly property int islandGap: root.islandGap
+      function beginIslandPanel(owner, width) {
+        if (root.pluginOwnsBarObject(pluginId, owner))
+          root.beginIslandPanel(owner, width)
+      }
+      function endIslandPanel(owner) {
+        if (root.pluginOwnsBarObject(pluginId, owner))
+          root.endIslandPanel(owner)
+      }
+    }
+  }
+
+  function publicLayoutConfig() {
+    return JSON.parse(JSON.stringify(root.layoutConfig || {}))
+  }
+
+  function bindPluginBarApi(api) {
+    if (!api) return
+    api.foreground = Qt.binding(function() { return root.foreground })
+    api.barForeground = Qt.binding(function() { return root.barForeground })
+    api.background = Qt.binding(function() { return root.background })
+    api.urgent = Qt.binding(function() { return root.urgent })
+    api.fontFamily = Qt.binding(function() { return root.fontFamily })
+    api.position = Qt.binding(function() { return root.position })
+    api.vertical = Qt.binding(function() { return root.vertical })
+    api.barSize = Qt.binding(function() { return root.barSize })
+    api.transparent = Qt.binding(function() { return root.transparent })
+    api.foregroundAnimationEnabled = Qt.binding(function() { return root.foregroundAnimationEnabled })
+    api.centerSectionRevealHeld = Qt.binding(function() { return root.centerSectionRevealHeld })
+    api._centerHoverRevealSuppressed = Qt.binding(function() { return root.centerHoverRevealSuppressed })
+    root.syncPluginBarApiObjects(api)
+  }
+
+  function syncPluginBarApiObjects(api) {
+    if (!api) return
+    api.activePopout = root.pluginOwnsBarObject(api.pluginId, root.activePopout)
+      ? root.activePopout : (root.activePopout ? api.foreignPopoutMarker : null)
+    api.clickTargets = root.pluginClickTargets(api.pluginId)
+    api.layoutConfig = root.publicLayoutConfig()
+  }
+
+  function pluginObjectRecord(target) {
+    for (var i = 0; i < pluginObjectOwners.length; i++) {
+      var record = pluginObjectOwners[i]
+      if (record && record.target === target) return record
+    }
+    return null
+  }
+
+  function markPluginObject(pluginId, target, role) {
+    var key = String(pluginId || "")
+    if (!key || !target) return false
+    var record = root.pluginObjectRecord(target)
+    if (record && record.pluginId !== key) return false
+    var next = []
+    for (var i = 0; i < pluginObjectOwners.length; i++) {
+      var existing = pluginObjectOwners[i]
+      if (!existing || existing.target !== target) next.push(existing)
+    }
+    var updated = record || { target: target, pluginId: key, clickTarget: false, popout: false }
+    updated[role] = true
+    next.push(updated)
+    pluginObjectOwners = next
+    return true
+  }
+
+  function unmarkPluginObject(pluginId, target, role) {
+    var key = String(pluginId || "")
+    var next = []
+    for (var i = 0; i < pluginObjectOwners.length; i++) {
+      var record = pluginObjectOwners[i]
+      if (!record || record.target !== target || record.pluginId !== key) {
+        next.push(record)
+        continue
+      }
+      record[role] = false
+      if (record.clickTarget || record.popout) next.push(record)
+    }
+    pluginObjectOwners = next
+  }
+
+  function pluginOwnsBarObject(pluginId, target) {
+    var record = target ? root.pluginObjectRecord(target) : null
+    return !!record && record.pluginId === String(pluginId || "")
+  }
+
+  function pluginClickTargets(pluginId) {
+    var out = []
+    for (var i = 0; i < root.clickTargets.length; i++) {
+      var target = root.clickTargets[i]
+      if (root.pluginOwnsBarObject(pluginId, target)) out.push(target)
+    }
+    return out
+  }
+
+  function syncAllPluginBarApiObjects() {
+    for (var id in pluginBarApis) root.syncPluginBarApiObjects(pluginBarApis[id])
+  }
+
+  function registerPluginClickTarget(pluginId, target) {
+    if (!root.markPluginObject(pluginId, target, "clickTarget")) return
+    root.registerClickTarget(target)
+  }
+
+  function unregisterPluginClickTarget(pluginId, target) {
+    if (!root.pluginOwnsBarObject(pluginId, target)) return
+    root.unregisterClickTarget(target)
+    root.unmarkPluginObject(pluginId, target, "clickTarget")
+  }
+
+  function requestPluginPopout(pluginId, owner) {
+    if (!root.markPluginObject(pluginId, owner, "popout")) return
+    root.requestPopout(owner)
+  }
+
+  function releasePluginPopout(pluginId, owner) {
+    if (!root.pluginOwnsBarObject(pluginId, owner)) return
+    root.releasePopout(owner)
+    root.unmarkPluginObject(pluginId, owner, "popout")
+  }
+
+  function pluginBarApiFor(pluginId, moduleName, registered) {
+    var key = String(pluginId || "")
+    if (!key) return null
+
+    var pluginShell = null
+    if (registered && root.shell && typeof root.shell.pluginShellForId === "function") {
+      // Only the trusted built-in bar receives ShellRoot and can request a
+      // service-capable facade for the widget it is instantiating.
+      pluginShell = root.shell.pluginShellForId(moduleName)
+    } else if (root.shell && typeof root.shell.pluginShellForBarEntry === "function") {
+      // Replacement bars receive a service-less entry facade. Giving an
+      // untrusted bar a generic facade factory would let it retrieve another
+      // third-party plugin's live service object.
+      pluginShell = root.shell.pluginShellForBarEntry(key, moduleName)
+    }
+
+    if (pluginBarApis[key]) {
+      pluginBarApis[key].shell = pluginShell
+      return pluginBarApis[key]
+    }
+
+    var api = pluginBarApiComponent.createObject(null, {
+      pluginId: key,
+      moduleName: String(moduleName || ""),
+      shell: pluginShell,
+      _showTooltip: function(target, text) { root.showTooltip(target, text) },
+      _hideTooltip: function(target) { root.hideTooltip(target) },
+      _registerClickTarget: function(target) { root.registerPluginClickTarget(key, target) },
+      _unregisterClickTarget: function(target) { root.unregisterPluginClickTarget(key, target) },
+      _requestPopout: function(owner) { root.requestPluginPopout(key, owner) },
+      _releasePopout: function(owner) { root.releasePluginPopout(key, owner) },
+      _switchPanelFrom: function(owner, direction) { return root.switchPanelFrom(owner, direction) },
+      _targetBelongsToWindow: function(target, window) { return root.targetBelongsToWindow(target, window) },
+      _moduleWidgets: function(requestedId) {
+        return String(requestedId || "") === String(moduleName || "")
+          ? root.moduleWidgets(moduleName) : []
+      },
+      _run: function(command) { root.run(command) },
+      _setCenterHoverRevealSuppressed: function(value) {
+        root.centerHoverRevealSuppressed = !!value
+      }
+    })
+    if (!api) return null
+    root.bindPluginBarApi(api)
+
+    var next = ({})
+    for (var id in pluginBarApis) next[id] = pluginBarApis[id]
+    next[key] = api
+    pluginBarApis = next
+    return api
+  }
+
+  function pluginBarApiUsed(pluginId) {
+    for (var i = 0; i < moduleSlots.length; i++) {
+      var slot = moduleSlots[i]
+      if (slot && slot.pluginApiId === pluginId) return true
+    }
+    return false
+  }
+
+  function releasePluginObjects(pluginId) {
+    var owned = pluginObjectOwners.slice()
+    for (var i = 0; i < owned.length; i++) {
+      var record = owned[i]
+      if (!record || record.pluginId !== pluginId) continue
+      if (root.islandPanelOwner === record.target) root.endIslandPanel(record.target)
+      if (record.clickTarget) root.unregisterClickTarget(record.target)
+      if (record.popout && root.activePopout === record.target) root.releasePopout(record.target)
+    }
+    pluginObjectOwners = pluginObjectOwners.filter(function(record) {
+      return record && record.pluginId !== pluginId
+    })
+  }
+
+  function prunePluginBarApis() {
+    var next = ({})
+    for (var id in pluginBarApis) {
+      var api = pluginBarApis[id]
+      if (root.pluginBarApiUsed(id)) {
+        next[id] = api
+        continue
+      }
+      root.releasePluginObjects(id)
+      if (api && typeof api.destroy === "function") api.destroy()
+    }
+    pluginBarApis = next
+  }
+
+  onActivePopoutChanged: syncAllPluginBarApiObjects()
+  onClickTargetsChanged: syncAllPluginBarApiObjects()
+  onLayoutConfigChanged: syncAllPluginBarApiObjects()
+  onModuleSlotsChanged: Qt.callLater(prunePluginBarApis)
+
+  Component.onDestruction: {
+    for (var id in pluginBarApis) {
+      root.releasePluginObjects(id)
+      if (pluginBarApis[id] && typeof pluginBarApis[id].destroy === "function")
+        pluginBarApis[id].destroy()
+    }
+    pluginBarApis = ({})
+  }
 
   function registerClickTarget(target) {
     if (!target || clickTargets.indexOf(target) !== -1) return
@@ -353,6 +587,17 @@ Item {
       else if ("close" in activePopout) activePopout.close()
     }
     activePopout = owner
+  }
+
+  function beginIslandPanel(owner, width) {
+    islandPanelOwner = owner
+    islandPanelWidth = Math.max(root.barSize * 2, Number(width) || 0)
+  }
+
+  function endIslandPanel(owner) {
+    if (islandPanelOwner !== owner) return
+    islandPanelOwner = null
+    islandPanelWidth = 0
   }
 
   function releasePopout(owner) {
@@ -636,6 +881,7 @@ Item {
     centerSectionHovered = hovered
     if (hovered) {
       centerSectionRevealTimer.stop()
+      centerSectionRevealHeld = true
     } else {
       centerSectionRevealTimer.restart()
     }
@@ -644,6 +890,10 @@ Item {
   function setBarHovered(hovered) {
     barHoverCount = Math.max(0, barHoverCount + (hovered ? 1 : -1))
     if (barHoverCount === 0) centerSectionRevealTimer.restart()
+  }
+
+  function setCenterHoverRevealSuppressed(value) {
+    centerHoverRevealSuppressed = !!value
   }
 
   Timer {
@@ -1047,7 +1297,8 @@ Item {
     // textures — which measures ~150ms against ~20ms to tear down. Parking
     // keeps the surface alive, so showing is only a margin change.
     visible: !remapGuard.remapping
-    exclusionMode: ExclusionMode.Auto
+    // Keep rendering clearance, but let Hyprland alone provide the window gap.
+    exclusiveZone: root.vertical ? root.barSize : implicitHeight - 2 - root.barGap
 
     // Full-width transparent surface + capsule mask: the layer surface never
     // resizes during a morph (so its straight edges can't clip the rounded
@@ -1070,7 +1321,7 @@ Item {
 
     margins {
       top: root.barHidden && root.position === "top" ? -root.barSize
-          : root.vertical ? 0 : root.islandGap - 2
+          : root.vertical ? 0 : root.islandGap
       bottom: root.barHidden && root.position === "bottom" ? -root.barSize
           : root.vertical ? 0 : 0
       left: root.barHidden && root.position === "left" ? -root.barSize
@@ -1089,7 +1340,7 @@ Item {
     implicitWidth: root.vertical ? root.barSize : 0
     // +4 gives the pill 2px clearance from the surface edges on each side, so
     // fractional-scaling pixel snapping can never shave the rounded arcs.
-    implicitHeight: root.vertical ? 0 : root.barSize + 2 * root.barGap
+    implicitHeight: root.vertical ? 0 : root.barSize + 4 + 2 * root.barGap
     color: "transparent"
     surfaceFormat.opaque: false
     WlrLayershell.namespace: "omarchy-bar"
@@ -1115,7 +1366,7 @@ Item {
       id: tooltipWindow
 
       visible: root.tooltipShown && root.tooltipTarget !== null && root.tooltipText !== "" && root.targetBelongsToWindow(root.tooltipTarget, barWindow)
-color: root.vertical ? (root.transparent ? "transparent" : root.background) : "transparent"
+      color: root.vertical ? (root.transparent ? "transparent" : root.background) : "transparent"
       implicitWidth: Math.ceil(tooltipBubble.implicitWidth)
       implicitHeight: Math.ceil(tooltipBubble.implicitHeight)
 
@@ -1163,6 +1414,7 @@ color: root.vertical ? (root.transparent ? "transparent" : root.background) : "t
 
         Text {
           id: tooltipLabel
+          textFormat: Text.PlainText
           anchors.centerIn: parent
           text: root.tooltipText
           color: Color.tooltip.text
@@ -1186,7 +1438,7 @@ color: root.vertical ? (root.transparent ? "transparent" : root.background) : "t
         // flexible side padding that keeps the module group centered and
         // absorbs any tiny frame lag during the morph so the rounded ends
         // stay clean and content never appears clipped.
-          readonly property real islandPad: root.barSize / 2 - 5
+        readonly property real islandPad: root.barSize / 2 - 5
         readonly property real contentWidth: islandRow.implicitWidth
         // Exposed so the PanelWindow mask can track the pill as it animates.
         readonly property real pillX: islandPill.x
@@ -1196,18 +1448,17 @@ color: root.vertical ? (root.transparent ? "transparent" : root.background) : "t
 
         BorderSurface {
           id: islandPill
+          objectName: "romanhanIslandPill"
+          antialiasing: true
           anchors.centerIn: parent
-          width: islandRoot.contentWidth + 4
+          width: root.islandPanelActive ? root.islandPanelWidth : islandRoot.contentWidth + 4
           height: root.barSize
-          radius: root.barSize / 2
+          radius: root.islandPanelActive ? Style.cornerRadius : root.barSize / 2
           color: root.transparent ? "transparent" : root.background
           borderSpec: Border.flat(root.barForeground, 0)
-
-          Behavior on radius {
-            NumberAnimation { duration: 300; easing.type: Easing.OutQuint }
-          }
-
+          opacity: root.islandPanelActive ? 0 : 1
           CenterGestureArea { anchors.fill: parent }
+          Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
 
           HoverHandler {
             onHoveredChanged: root.setCenterSectionHovered(hovered)
@@ -1219,6 +1470,10 @@ color: root.vertical ? (root.transparent ? "transparent" : root.background) : "t
             width: islandRoot.contentWidth
             height: parent.height
             spacing: 0
+            enabled: !root.islandPanelActive
+            opacity: root.islandPanelActive ? 0 : 1
+
+            Behavior on opacity { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
 
             Item {
               implicitWidth: islandPad
@@ -1250,7 +1505,7 @@ color: root.vertical ? (root.transparent ? "transparent" : root.background) : "t
               entries: root.fullLayoutEntries("right")
               Layout.preferredWidth: item ? item.implicitWidth : 0
             }
-Item {
+            Item {
               implicitWidth: islandPad
               width: islandPad
               implicitHeight: 1
@@ -1677,6 +1932,9 @@ Item {
     readonly property bool slotRevealed: root.islandRevealed || root.islandCoreIds.indexOf(moduleName) !== -1
     readonly property var moduleSettings: root.entrySettings(entry)
     readonly property string customType: root.customModuleType(entry)
+    readonly property var registryMetadata: root.barWidgetRegistry.metadataFor(root.canonicalWidgetId(moduleName))
+    readonly property bool firstParty: registryMetadata && registryMetadata.firstParty === true
+    readonly property string pluginApiId: registered ? root.canonicalWidgetId(moduleName) : "bar-entry:" + moduleName
     // Re-evaluate when the registry mutates (Component reference changes,
     // plugin enabled/disabled, etc.). Reading the `widgets` property creates
     // the binding dependency — the wrapped function call alone wouldn't.
@@ -1914,7 +2172,8 @@ Item {
     function injectProps() {
       var target = activeItem
       if (!target) return
-      if ("bar" in target) target.bar = root
+      if ("bar" in target) target.bar = firstParty
+        ? root : root.pluginBarApiFor(pluginApiId, moduleName, registered)
       if ("moduleName" in target) target.moduleName = moduleName
       if ("settings" in target) target.settings = moduleSettings
     }

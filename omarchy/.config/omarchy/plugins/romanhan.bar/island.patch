@@ -1,0 +1,371 @@
+--- a/Bar.qml
++++ b/Bar.qml
+@@
+   id: root
+ 
+   // The omarchy-shell host injects omarchyPath from OMARCHY_PATH.
+-  required property string omarchyPath
++  // NOTE: plugin bars are loaded via Loader.source (no context bindings), and a
++  // root `required property` makes that load fail. Plain properties are set by
++  // the host's configureBar() right after load, like plugin panels.
++  property string omarchyPath: ""
+   // Injected by the host shell so bar slots can resolve enabled widgets.
+-  required property var barWidgetRegistry
++  property var barWidgetRegistry: null
+   // Injected by the host shell every time shell.json is reloaded. Holds the
+   // `bar:` subtree: position, centerAnchor, layout. The host owns file IO;
+   // the bar just renders whatever it's handed. The bar font follows the
+   // OS-level fontconfig monospace binding — it is not stored in shell.json.
+-  required property var barConfig
++  property var barConfig: null
+   // Injected by the host shell. Used for shell-wide actions such as opening
+   // settings and persisting inline widget state.
+   property var shell: null
+@@ -36,7 +39,7 @@
+   property var fallbackBarConfig: ({
+     position: "top",
+     transparent: false,
+-    centerAnchor: "omarchy.clock",
++    centerAnchor: "romanhan.clock",
+     layout: { left: [], center: [], right: [] }
+   })
+   property var layoutConfig: fallbackBarConfig.layout
+@@ -45,6 +48,32 @@
+   property bool useTransparentForeground: false
+   property bool transparent: false
+   property bool centerSectionHovered: false
++  // Dynamic island: when false only the core widgets are shown and the bar
++  // shrinks to a floating pill; revealing mounts the hidden layout widgets.
++  property bool islandRevealed: false
++  // Widgets always visible on the island regardless of reveal state.
++  property var islandCoreIds: [
++    "omarchy.workspaces", "romanhan.clock", "romanhan.audio",
++    "romanhan.network", "romanhan.power", "island-reveal",
++    "omarchy.system-update", "omarchy.indicators"
++  ]
++  // Vertical offset of the floating island from the screen edge.
++  property int islandGap: 1
++  // Gap between the pill and the windows below it. Standalone value; 0 = pill
++  // sits flush against the windows.
++  property int barGap: 0
++  // Height of the floating island pill; overrides Style.bar.sizeHorizontal.
++  property int islandHeight: 30
++  // Horizontal gap between modules inside the island pill.
++  property int islandModuleGap: Style.space(72)
++  function toggleIslandReveal(): void { islandRevealed = !islandRevealed }
++  IpcHandler {
++    target: "romanhan.bar"
++    function toggleReveal(): string {
++      root.toggleIslandReveal()
++      return "ok"
++    }
++  }
+   // One bar surface exists per monitor and each reports into this count, so a
+   // pointer crossing from one monitor's bar to another's stays counted however
+   // the enter and leave interleave. A single shared bool would be left false by
+@@ -327,7 +356,7 @@
+   }
+ 
+   readonly property bool vertical: position === "left" || position === "right"
+-  readonly property int barSize: vertical ? Style.bar.sizeVertical : Style.bar.sizeHorizontal
++  readonly property int barSize: vertical ? Style.bar.sizeVertical : islandHeight
+ 
+   function normalizePosition(value) {
+     return BarModel.normalizePosition(value)
+@@ -392,6 +421,21 @@
+   function layoutEntries(region) {
+     var serial = barConfigSerial
+     var entries = layoutConfig ? layoutConfig[region] : null
++    if (!Array.isArray(entries)) return []
++    if (!root.islandRevealed) {
++      var core = root.islandCoreIds
++      entries = entries.filter(function(entry) {
++        return core.indexOf(root.entryId(entry)) !== -1
++      })
++    }
++    return entries
++  }
++
++  // Unfiltered layout for a region. The island mounts every entry at all
++  // times and gates each slot's width/opacity on reveal state, so the pill
++  // morphs in lock-step with the content instead of lagging behind it.
++  function fullLayoutEntries(region) {
++    var entries = layoutConfig ? layoutConfig[region] : null
+     return Array.isArray(entries) ? entries : []
+   }
+ 
+@@ -948,21 +992,6 @@
+     onFileChanged: barHiddenProbe.running = true
+   }
+ 
+-  // The directory watch can permanently stop delivering events after flag
+-  // changes land in quick succession, stranding the bar off screen until the
+-  // shell restarts. `omarchy-toggle-bar` nudges this after flipping the flag
+-  // so the probe re-reads it even when the watch has gone quiet.
+-  IpcHandler {
+-    target: "omarchy.bar"
+-
+-    // Start rather than restart: a probe already in flight was launched by the
+-    // directory watch after the flag flipped, so its answer is current, and
+-    // killing it here can swallow the result entirely.
+-    function syncHidden(): void {
+-      barHiddenProbe.running = true
+-    }
+-  }
+-
+   Variants {
+     model: Quickshell.screens
+ 
+@@ -1004,13 +1033,32 @@
+   component BarPanel: PanelWindow {
+     id: barWindow
+ 
++    // Width of the island content (module row + pill padding), reported by the
++    // horizontal content so the layer surface can shrink/grow to hug it.
++    readonly property real islandContentWidth: barContent.item && barContent.item.contentWidth
++        ? barContent.item.contentWidth : 0
++
+     // Hiding parks the bar just past its screen edge instead of unmapping it.
+     // Unmapping frees the layer surface and the whole scene graph, so every
+     // reveal has to rebuild them — new surface, re-shaped glyphs, re-uploaded
+     // textures — which measures ~150ms against ~20ms to tear down. Parking
+     // keeps the surface alive, so showing is only a margin change.
+     visible: !remapGuard.remapping
+-    exclusionMode: root.barHidden ? ExclusionMode.Ignore : ExclusionMode.Auto
++    exclusionMode: ExclusionMode.Auto
++
++    // Full-width transparent surface + capsule mask: the layer surface never
++    // resizes during a morph (so its straight edges can't clip the rounded
++    // ends), and input/visibility is limited to the animated capsule.
++    mask: Region {
++      x: root.vertical ? 0
++        : Math.floor(barContent.item ? barContent.item.pillX : 0) - 2
++      y: root.vertical ? 0
++        : Math.floor(barContent.item ? barContent.item.pillY : 0) - 2
++      width: root.vertical ? barWindow.width
++        : Math.ceil(barContent.item ? barContent.item.pillW : 0) + 4
++      height: root.vertical ? barWindow.height
++        : Math.ceil(barContent.item ? barContent.item.pillH : 0) + 4
++    }
+ 
+     ScreenMoveRemap {
+       id: remapGuard
+@@ -1018,10 +1066,14 @@
+     }
+ 
+     margins {
+-      top: root.barHidden && root.position === "top" ? -root.barSize : 0
+-      bottom: root.barHidden && root.position === "bottom" ? -root.barSize : 0
+-      left: root.barHidden && root.position === "left" ? -root.barSize : 0
+-      right: root.barHidden && root.position === "right" ? -root.barSize : 0
++      top: root.barHidden && root.position === "top" ? -root.barSize
++          : root.vertical ? 0 : root.islandGap
++      bottom: root.barHidden && root.position === "bottom" ? -root.barSize
++          : root.vertical ? 0 : 0
++      left: root.barHidden && root.position === "left" ? -root.barSize
++          : root.vertical ? 0 : 0
++      right: root.barHidden && root.position === "right" ? -root.barSize
++          : root.vertical ? 0 : 0
+     }
+ 
+     anchors {
+@@ -1032,13 +1084,16 @@
+     }
+ 
+     implicitWidth: root.vertical ? root.barSize : 0
+-    implicitHeight: root.vertical ? 0 : root.barSize
+-    color: root.transparent ? "transparent" : root.background
++    // +4 gives the pill 2px clearance from the surface edges on each side, so
++    // fractional-scaling pixel snapping can never shave the rounded arcs.
++    implicitHeight: root.vertical ? 0 : root.barSize + 4 + 2 * root.barGap
++    color: "transparent"
+     surfaceFormat.opaque: false
+     WlrLayershell.namespace: "omarchy-bar"
+     WlrLayershell.layer: WlrLayer.Top
+ 
+     Loader {
++      id: barContent
+       anchors.fill: parent
+       sourceComponent: root.vertical ? verticalBar : horizontalBar
+ 
+@@ -1057,7 +1112,7 @@
+       id: tooltipWindow
+ 
+       visible: root.tooltipShown && root.tooltipTarget !== null && root.tooltipText !== "" && root.targetBelongsToWindow(root.tooltipTarget, barWindow)
+-      color: "transparent"
++      color: root.vertical ? (root.transparent ? "transparent" : root.background) : "transparent"
+       implicitWidth: Math.ceil(tooltipBubble.implicitWidth)
+       implicitHeight: Math.ceil(tooltipBubble.implicitHeight)
+ 
+@@ -1121,24 +1176,88 @@
+       id: horizontalBar
+ 
+       Item {
++        id: islandRoot
+         anchors.fill: parent
+ 
+-        CenterModules { anchors.fill: parent }
++        // The horizontal island: a centered pill that animates its width as
++        // hidden widgets are revealed. The content row fills the pill, with
++        // flexible side padding that keeps the module group centered and
++        // absorbs any tiny frame lag during the morph so the rounded ends
++        // stay clean and content never appears clipped.
++        readonly property real islandPad: root.barSize / 2 - 5
++        readonly property real contentWidth: islandRow.implicitWidth
++        // Exposed so the PanelWindow mask can track the pill as it animates.
++        readonly property real pillX: islandPill.x
++        readonly property real pillY: islandPill.y
++        readonly property real pillW: islandPill.width
++        readonly property real pillH: islandPill.height
+ 
+-        LeftModules {
+-          anchors.left: parent.left
+-          anchors.leftMargin: Style.space(8)
+-          anchors.verticalCenter: parent.verticalCenter
++        BorderSurface {
++          id: islandPill
++          objectName: "romanhanIslandPill"
++          anchors.centerIn: parent
++          width: islandRoot.contentWidth + 4
++          height: root.barSize
++          radius: root.islandPanelActive ? Style.cornerRadius : root.barSize / 2
++          color: root.transparent ? "transparent" : root.background
++          borderSpec: Border.flat(root.barForeground, 0)
++          opacity: root.islandPanelActive ? 0 : 1
++          CenterGestureArea { anchors.fill: parent }
++          Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
++
++          HoverHandler {
++            onHoveredChanged: root.setCenterSectionHovered(hovered)
++          }
++
++          RowLayout {
++            id: islandRow
++            anchors.centerIn: parent
++            width: islandRoot.contentWidth
++            height: parent.height
++            spacing: 0
++
++            Item {
++              implicitWidth: islandPad
++              width: islandPad
++              implicitHeight: 1
++              Layout.preferredWidth: islandPad
++              Layout.fillWidth: false
++            }
++            ModuleList {
++              region: "left"
++              entries: root.fullLayoutEntries("left")
++              Layout.preferredWidth: item ? item.implicitWidth : 0
++            }
++            Item {
++              implicitWidth: root.islandModuleGap
++              implicitHeight: 1
++            }
++            ModuleList {
++              region: "center"
++              entries: root.fullLayoutEntries("center")
++              Layout.preferredWidth: item ? item.implicitWidth : 0
++            }
++            Item {
++              implicitWidth: root.islandModuleGap
++              implicitHeight: 1
++            }
++            ModuleList {
++              region: "right"
++              entries: root.fullLayoutEntries("right")
++              Layout.preferredWidth: item ? item.implicitWidth : 0
++            }
++            Item {
++              implicitWidth: islandPad
++              width: islandPad
++              implicitHeight: 1
++              Layout.preferredWidth: islandPad
++              Layout.fillWidth: false
++            }
++          }
+         }
+ 
+-        RightModules {
+-          anchors.right: parent.right
+-          anchors.rightMargin: Style.space(8)
+-          anchors.verticalCenter: parent.verticalCenter
+         }
+-      }
+     }
+-
+     Component {
+       id: verticalBar
+ 
+@@ -1205,7 +1332,7 @@
+         anchors.fill: parent
+         color: root.transparent ? "transparent" : root.background
+         borderSpec: Border.flat(root.barForeground, 1)
+-        radius: Math.min(Style.cornerRadius, height / 2)
++        radius: height / 2
+         opacity: root.transparent ? 0.45 : 0.94
+       }
+ 
+@@ -1543,9 +1670,15 @@
+   component ModuleSlot: Item {
+     id: slot
+ 
++    opacity: slotRevealed ? 1 : 0
++    Behavior on opacity {
++      NumberAnimation { duration: 280; easing.type: Easing.OutQuint }
++    }
++
+     required property var entry
+     property string region: ""
+     readonly property string moduleName: root.entryId(entry)
++    readonly property bool slotRevealed: root.islandRevealed || root.islandCoreIds.indexOf(moduleName) !== -1
+     readonly property var moduleSettings: root.entrySettings(entry)
+     readonly property string customType: root.customModuleType(entry)
+     // Re-evaluate when the registry mutates (Component reference changes,
+@@ -1578,13 +1711,32 @@
+       if (hint !== undefined && hint !== null && hint > 0) return Math.round(hint)
+       return Math.max(Style.space(10), Math.round((root.vertical ? slot.height : slot.width) * 0.55))
+     }
+-    implicitWidth: activeItem && activeItem.visible ? (root.vertical ? root.barSize : activeItem.implicitWidth) : 0
+-    implicitHeight: activeItem && activeItem.visible ? activeItem.implicitHeight : 0
+-    width: implicitWidth
+-    height: implicitHeight
++    // Tide-island style synchronized reveal: the slot box animates in lockstep
++    // with the pill's own width Behavior, so content never overflows the rounded
++    // capsule (which produced the straight clip line on reveal / content change).
++    readonly property real slotTargetWidth: slotRevealed
++      ? (activeItem && activeItem.visible
++          ? (root.vertical ? root.barSize : activeItem.implicitWidth)
++          : (activeItem && slot.moduleName === "omarchy.weather" ? activeItem.implicitWidth : 0))
++      : 0
++    readonly property real slotTargetHeight: slotRevealed && activeItem && activeItem.visible ? activeItem.implicitHeight : 0
++    property real slotAnimWidth: slotTargetWidth
++    property real slotAnimHeight: slotTargetHeight
++    Behavior on slotAnimWidth {
++      NumberAnimation { duration: 280; easing.type: Easing.OutQuint }
++    }
++    Behavior on slotAnimHeight {
++      NumberAnimation { duration: 280; easing.type: Easing.OutQuint }
++    }
++    implicitWidth: slotAnimWidth
++    implicitHeight: slotAnimHeight
++    width: slotAnimWidth
++    height: slotAnimHeight
+     z: modulePointer.dragging ? 100 : 0
+ 
+-    Component.onCompleted: root.registerModuleSlot(slot)
++    Component.onCompleted: {
++      root.registerModuleSlot(slot)
++    }
+     Component.onDestruction: {
+       if (root.barDragSource === slot) root.clearBarDrag()
+       root.unregisterModuleSlot(slot)
+@@ -1598,7 +1750,7 @@
+       anchors.margins: Style.space(1)
+       color: root.transparent ? "transparent" : root.background
+       borderSpec: Border.flat(root.barForeground, 1)
+-      radius: Math.min(Style.cornerRadius, height / 2)
++      radius: height / 2
+       opacity: root.transparent ? 0.22 : 0.32
+     }
+ 

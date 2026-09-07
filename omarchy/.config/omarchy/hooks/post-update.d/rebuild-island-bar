@@ -1,0 +1,14 @@
+#!/bin/bash
+
+REBUILD="$HOME/.config/omarchy/plugins/romanhan.bar/rebuild"
+
+if output=$($REBUILD 2>&1); then
+  if [[ $output == Rebuilt* ]]; then
+    notify-send -u low "Dynamic island updated" "$output"
+  fi
+else
+  notify-send -u critical "Dynamic island needs attention" \
+    "The island patch no longer applies to this Omarchy version. Your existing bar was left untouched."
+fi
+
+exit 0

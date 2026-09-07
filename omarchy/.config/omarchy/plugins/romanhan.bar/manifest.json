@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "romanhan.bar",
-  "name": "My Bar",
+  "name": "Dynamic Island Bar",
   "version": "1.0.0",
-  "author": "Omarchy",
-  "description": "Status bar with widgets",
+  "author": "Roman Han",
+  "description": "Update-safe dynamic island layered onto Omarchy's stock bar",
   "kinds": [
     "bar"
   ],

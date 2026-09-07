@@ -43,7 +43,6 @@ o.bind("SUPER + CTRL + 0", "Reveal hidden bar widgets", "omarchy-shell romanhan.
 -- Applications
 o.bind("SUPER + Q", "Close window", hl.dsp.window.close())
 o.bind("SUPER + T", "Terminal", "omarchy-launch-terminal")
-o.bind("SUPER + Y", "Yazi", "uwsm-app -- xdg-terminal-exec --dir=\"$(omarchy-cmd-terminal-cwd)\" -e yazi")
 o.bind("SUPER + S", "Superfile", "uwsm-app -- xdg-terminal-exec --dir=\"$(omarchy-cmd-terminal-cwd)\" -e spf")
 o.bind("SUPER + E", "File manager", { omarchy = "nautilus" })
 o.bind("SUPER + B", "Browser", { omarchy = "browser" })
