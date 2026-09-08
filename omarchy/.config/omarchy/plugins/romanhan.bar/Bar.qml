@@ -146,6 +146,21 @@ Item {
     PluginBarApi {
       // Preserve the scoped stock API while exposing our island animation hooks.
       readonly property int islandGap: root.islandGap
+      readonly property bool islandRevealed: root.islandRevealed
+      function toggleIslandReveal() { root.toggleIslandReveal() }
+      function toggleTrayManager(anchor) {
+        if (moduleName !== "island-reveal") return
+        var window = root.targetWindow(anchor)
+        if (!window) return
+        var trays = root.moduleWidgets("romanhan.tray")
+        for (var i = 0; i < trays.length; i++) {
+          var tray = trays[i]
+          if (!root.targetBelongsToWindow(tray, window)) continue
+          root.islandRevealed = true
+          tray.managePopupOpen = !tray.managePopupOpen
+          return
+        }
+      }
       function beginIslandPanel(owner, width) {
         if (root.pluginOwnsBarObject(pluginId, owner))
           root.beginIslandPanel(owner, width)

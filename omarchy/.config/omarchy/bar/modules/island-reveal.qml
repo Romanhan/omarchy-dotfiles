@@ -14,14 +14,8 @@ BarWidget {
   readonly property bool revealed: !!bar && bar.islandRevealed === true
 
   function toggleTrayManager() {
-    if (!bar || typeof bar.moduleWidgets !== "function") return
-    var trays = bar.moduleWidgets("romanhan.tray")
-    for (var i = 0; i < trays.length; i++) {
-      if (bar.targetBelongsToWindow
-          && !bar.targetBelongsToWindow(trays[i], root.QsWindow.window)) continue
-      trays[i].managePopupOpen = !trays[i].managePopupOpen
-      return
-    }
+    if (bar && typeof bar.toggleTrayManager === "function")
+      bar.toggleTrayManager(root)
   }
 
   implicitWidth: Style.space(22)

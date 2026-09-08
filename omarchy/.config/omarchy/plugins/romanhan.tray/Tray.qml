@@ -361,117 +361,134 @@ BarWidget {
     }
   }
 
-  PopupCard {
+  KeyboardPanel {
     id: managePopup
     anchorItem: root
     owner: root
     bar: root.bar
     open: root.managePopupOpen
-    contentWidth: managePopup.fittedContentWidth(Style.space(300))
-    contentHeight: managePopup.fittedContentHeight(manageColumn.implicitHeight)
+    focusTarget: manageKeys
+    contentWidth: managePopup.fittedContentWidth(Style.space(380))
+    contentHeight: managePopup.fittedContentHeight(manageColumn.implicitHeight, Style.space(560))
 
-    Column {
-      id: manageColumn
+    PanelKeyCatcher {
+      id: manageKeys
       anchors.fill: parent
-      spacing: Style.space(8)
+      onCloseRequested: root.close()
 
-      Text {
-        text: "Tray icons"
-        color: root.foreground
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.body
-        font.bold: true
-      }
+      ScrollView {
+        id: manageScroll
+        anchors.fill: parent
+        clip: true
+        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+        ScrollBar.vertical.policy: manageColumn.implicitHeight > height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
 
-      Text {
-        text: "Pinned icons stay visible. Hidden icons never show."
-        color: Qt.darker(root.foreground, 1.4)
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.caption
-        wrapMode: Text.WordWrap
-        width: parent.width
-      }
+        Column {
+          id: manageColumn
+          width: manageScroll.availableWidth
+          spacing: Style.space(14)
 
-      Text {
-        visible: root.allItems.length === 0
-        text: "No tray items reporting."
-        color: Qt.darker(root.foreground, 1.5)
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.bodySmall
-        font.italic: true
-      }
-
-      Repeater {
-        model: root.allItems
-        delegate: Item {
-          id: rowRoot
-          required property var modelData
-          required property int index
-          width: manageColumn.width
-          implicitHeight: 28
-
-          readonly property string itemId: String(modelData.id || "")
-          readonly property string displayName: {
-            var t = String(modelData.title || "").trim()
-            if (t) return t
-            var tt = String(modelData.tooltipTitle || "").trim()
-            if (tt) return tt
-            var id = String(modelData.id || "")
-            var slash = id.lastIndexOf("/")
-            return slash !== -1 ? id.substring(slash + 1) : (id || "Unknown")
-          }
-          readonly property bool isPinned: root.pinnedIds.indexOf(itemId) !== -1
-          readonly property bool isHidden: root.hiddenIds.indexOf(itemId) !== -1
-
-          TrayIcon {
-            id: rowIcon
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.left: parent.left
-            width: 16
-            height: 16
-            icon: rowRoot.modelData.icon
+          Text {
+            text: "Tray icons"
+            color: root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.title
+            font.bold: true
           }
 
           Text {
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.left: rowIcon.right
-            anchors.leftMargin: Style.space(10)
-            anchors.right: rowHideBtn.left
-            anchors.rightMargin: Style.space(8)
-            text: rowRoot.displayName
-            color: root.foreground
+            text: "Choose which app icons appear in the expanded bar."
+            color: Qt.darker(root.foreground, 1.4)
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            wrapMode: Text.WordWrap
+            width: parent.width
+          }
+
+          Text {
+            visible: root.allItems.length === 0
+            text: "No tray items reporting."
+            color: Qt.darker(root.foreground, 1.5)
             font.family: root.fontFamily
             font.pixelSize: Style.font.bodySmall
-            elide: Text.ElideRight
+            font.italic: true
           }
 
-          Button {
-            id: rowPinBtn
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.right: parent.right
-            iconText: "\uf08d"
-            text: rowRoot.isPinned ? "Unpin" : "Pin"
-            foreground: root.foreground
-            horizontalPadding: 8
-            verticalPadding: 3
-            iconSize: Style.font.bodySmall
-            fontSize: Style.font.bodySmall
-            onClicked: root.togglePin(rowRoot.itemId)
-          }
+          PanelSeparator { width: parent.width }
 
-          Button {
-            id: rowHideBtn
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.right: rowPinBtn.left
-            anchors.rightMargin: Style.space(6)
-            iconText: "\uf06e"
-            text: rowRoot.isHidden ? "Show" : "Hide"
-            foreground: root.foreground
-            horizontalPadding: 8
-            verticalPadding: 3
-            iconSize: Style.font.bodySmall
-            fontSize: Style.font.bodySmall
-            onClicked: root.toggleHide(rowRoot.itemId)
+          Repeater {
+            model: root.allItems
+            delegate: Item {
+              id: rowRoot
+              required property var modelData
+              required property int index
+              width: manageColumn.width
+              implicitHeight: Math.max(Style.space(36), rowPinBtn.implicitHeight, rowHideBtn.implicitHeight)
+
+              readonly property string itemId: String(modelData.id || "")
+              readonly property string displayName: {
+                var t = String(modelData.title || "").trim()
+                if (t) return t
+                var tt = String(modelData.tooltipTitle || "").trim()
+                if (tt) return tt
+                var id = String(modelData.id || "")
+                var slash = id.lastIndexOf("/")
+                return slash !== -1 ? id.substring(slash + 1) : (id || "Unknown")
+              }
+              readonly property bool isPinned: root.pinnedIds.indexOf(itemId) !== -1
+              readonly property bool isHidden: root.hiddenIds.indexOf(itemId) !== -1
+
+              TrayIcon {
+                id: rowIcon
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.left: parent.left
+                width: Style.space(20)
+                height: Style.space(20)
+                icon: rowRoot.modelData.icon
+              }
+
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.left: rowIcon.right
+                anchors.leftMargin: Style.space(10)
+                anchors.right: rowHideBtn.left
+                anchors.rightMargin: Style.space(8)
+                text: rowRoot.displayName
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.bodySmall
+                elide: Text.ElideRight
+              }
+
+              Button {
+                id: rowPinBtn
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.right: parent.right
+                iconText: "\uf08d"
+                text: rowRoot.isPinned ? "Unpin" : "Pin"
+                foreground: root.foreground
+                horizontalPadding: Style.space(8)
+                verticalPadding: Style.space(4)
+                iconSize: Style.font.bodySmall
+                fontSize: Style.font.bodySmall
+                onClicked: root.togglePin(rowRoot.itemId)
+              }
+
+              Button {
+                id: rowHideBtn
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.right: rowPinBtn.left
+                anchors.rightMargin: Style.space(6)
+                iconText: "\uf06e"
+                text: rowRoot.isHidden ? "Show" : "Hide"
+                foreground: root.foreground
+                horizontalPadding: Style.space(8)
+                verticalPadding: Style.space(4)
+                iconSize: Style.font.bodySmall
+                fontSize: Style.font.bodySmall
+                onClicked: root.toggleHide(rowRoot.itemId)
+              }
+            }
           }
         }
       }
