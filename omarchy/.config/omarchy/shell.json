@@ -9,10 +9,14 @@
           "source": "~/.config/omarchy/plugins/romanhan.bar/widgets/Indicators.qml"
         },
         {
+          "id": "omacom.elsewhen",
+          "zones": "Tallinn|Europe/Tallinn, New York|America/New_York, Baku|Asia/Baku"
+        },
+        {
           "format": "dddd HH:mm",
           "formatAlt": "d MMMM 'W'ww yyyy",
           "id": "romanhan.clock",
-          "verticalFormat": "HH\n\u2014\nmm"
+          "verticalFormat": "HH\n—\nmm"
         },
         {
           "id": "omarchy.keyboard-layout"
@@ -33,7 +37,9 @@
       ],
       "right": [
         {
-          "id": "romanhan.tray"
+          "id": "romanhan.tray",
+          "pinned": [],
+          "hidden": []
         },
         {
           "id": "romanhan.tailscale"
