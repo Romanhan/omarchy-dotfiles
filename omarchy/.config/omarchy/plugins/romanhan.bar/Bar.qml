@@ -106,9 +106,9 @@ Item {
   property color background: Color.bar.background
   property color urgent: Color.bar.active
 
-  Behavior on barForeground { enabled: root.foregroundAnimationEnabled; ColorAnimation { duration: 420; easing.type: Easing.InOutCubic } }
-  Behavior on background { ColorAnimation { duration: 420; easing.type: Easing.InOutCubic } }
-  Behavior on urgent { ColorAnimation { duration: 420; easing.type: Easing.InOutCubic } }
+  Behavior on barForeground { enabled: root.foregroundAnimationEnabled; ColorAnimation { duration: Style.duration(420); easing.type: Easing.InOutCubic } }
+  Behavior on background { ColorAnimation { duration: Style.duration(420); easing.type: Easing.InOutCubic } }
+  Behavior on urgent { ColorAnimation { duration: Style.duration(420); easing.type: Easing.InOutCubic } }
   property var tooltipTarget: null
   property var pendingTooltipTarget: null
   property string tooltipText: ""
@@ -604,6 +604,10 @@ Item {
     activePopout = owner
   }
 
+  function releasePopout(owner) {
+    if (activePopout === owner) activePopout = null
+  }
+
   function beginIslandPanel(owner, width) {
     islandPanelOwner = owner
     islandPanelWidth = Math.max(root.barSize * 2, Number(width) || 0)
@@ -613,10 +617,6 @@ Item {
     if (islandPanelOwner !== owner) return
     islandPanelOwner = null
     islandPanelWidth = 0
-  }
-
-  function releasePopout(owner) {
-    if (activePopout === owner) activePopout = null
   }
 
   readonly property bool vertical: position === "left" || position === "right"
@@ -1260,6 +1260,21 @@ Item {
     onFileChanged: barHiddenProbe.running = true
   }
 
+  // The directory watch can permanently stop delivering events after flag
+  // changes land in quick succession, stranding the bar off screen until the
+  // shell restarts. `omarchy-toggle-bar` nudges this after flipping the flag
+  // so the probe re-reads it even when the watch has gone quiet.
+  ShellIpc {
+    target: "omarchy.bar"
+
+    // Start rather than restart: a probe already in flight was launched by the
+    // directory watch after the flag flipped, so its answer is current, and
+    // killing it here can swallow the result entirely.
+    function syncHidden(): void {
+      barHiddenProbe.running = true
+    }
+  }
+
   Variants {
     model: Quickshell.screens
 
@@ -1312,8 +1327,7 @@ Item {
     // textures — which measures ~150ms against ~20ms to tear down. Parking
     // keeps the surface alive, so showing is only a margin change.
     visible: !remapGuard.remapping
-    // Keep rendering clearance, but let Hyprland alone provide the window gap.
-    exclusiveZone: root.vertical ? root.barSize : implicitHeight - 2 - root.barGap
+    exclusionMode: ExclusionMode.Auto
 
     // Full-width transparent surface + capsule mask: the layer surface never
     // resizes during a morph (so its straight edges can't clip the rounded
@@ -1529,9 +1543,9 @@ Item {
             }
           }
         }
-
-        }
+      }
     }
+
     Component {
       id: verticalBar
 
@@ -1598,7 +1612,7 @@ Item {
         anchors.fill: parent
         color: root.transparent ? "transparent" : root.background
         borderSpec: Border.flat(root.barForeground, 1)
-        radius: height / 2
+        radius: Math.min(Style.cornerRadius, height / 2)
         opacity: root.transparent ? 0.45 : 0.94
       }
 
@@ -1672,7 +1686,7 @@ Item {
         opacity: root.barMoveCandidate === modelData ? (root.transparent ? 0.45 : 0.7) : 0
 
         Behavior on opacity {
-          NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
+          NumberAnimation { duration: Style.duration(140); easing.type: Easing.OutCubic }
         }
       }
     }
@@ -2083,7 +2097,7 @@ Item {
       z: 50
 
       Behavior on opacity {
-        NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
+        NumberAnimation { duration: Style.duration(120); easing.type: Easing.OutCubic }
       }
     }
 

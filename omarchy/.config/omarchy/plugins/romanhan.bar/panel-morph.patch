@@ -1,6 +1,6 @@
 --- a/Bar.qml
 +++ b/Bar.qml
-@@ -110,6 +110,9 @@
+@@ -116,6 +116,9 @@
    property bool tooltipShown: false
    property int tooltipRequest: 0
    property var activePopout: null
@@ -10,8 +10,8 @@
    property var barDragSource: null
    property var barDragTarget: null
    property var barDragTargetGeometry: null
-@@ -351,6 +354,17 @@
-     activePopout = owner
+@@ -578,6 +581,17 @@
+     if (activePopout === owner) activePopout = null
    }
  
 +  function beginIslandPanel(owner, width) {
@@ -25,10 +25,11 @@
 +    islandPanelWidth = 0
 +  }
 +
-   function releasePopout(owner) {
-     if (activePopout === owner) activePopout = null
-   }
-@@ -1196,6 +1210,7 @@
+   readonly property bool vertical: position === "left" || position === "right"
+   readonly property int barSize: vertical ? Style.bar.sizeVertical : islandHeight
+ 
+@@ -1437,8 +1451,9 @@
+         BorderSurface {
            id: islandPill
            objectName: "romanhanIslandPill"
 +          antialiasing: true
@@ -37,7 +38,8 @@
 +          width: root.islandPanelActive ? root.islandPanelWidth : islandRoot.contentWidth + 4
            height: root.barSize
            radius: root.islandPanelActive ? Style.cornerRadius : root.barSize / 2
-@@ -1223,6 +1240,10 @@
+           color: root.transparent ? "transparent" : root.background
+@@ -1457,6 +1472,10 @@
              width: islandRoot.contentWidth
              height: parent.height
              spacing: 0

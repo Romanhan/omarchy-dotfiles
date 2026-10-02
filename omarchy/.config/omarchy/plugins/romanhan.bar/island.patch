@@ -1,27 +1,6 @@
 --- a/Bar.qml
 +++ b/Bar.qml
-@@
-   id: root
- 
-   // The omarchy-shell host injects omarchyPath from OMARCHY_PATH.
--  required property string omarchyPath
-+  // NOTE: plugin bars are loaded via Loader.source (no context bindings), and a
-+  // root `required property` makes that load fail. Plain properties are set by
-+  // the host's configureBar() right after load, like plugin panels.
-+  property string omarchyPath: ""
-   // Injected by the host shell so bar slots can resolve enabled widgets.
--  required property var barWidgetRegistry
-+  property var barWidgetRegistry: null
-   // Injected by the host shell every time shell.json is reloaded. Holds the
-   // `bar:` subtree: position, centerAnchor, layout. The host owns file IO;
-   // the bar just renders whatever it's handed. The bar font follows the
-   // OS-level fontconfig monospace binding — it is not stored in shell.json.
--  required property var barConfig
-+  property var barConfig: null
-   // Injected by the host shell. Used for shell-wide actions such as opening
-   // settings and persisting inline widget state.
-   property var shell: null
-@@ -36,7 +39,7 @@
+@@ -45,7 +45,7 @@
    property var fallbackBarConfig: ({
      position: "top",
      transparent: false,
@@ -30,7 +9,7 @@
      layout: { left: [], center: [], right: [] }
    })
    property var layoutConfig: fallbackBarConfig.layout
-@@ -45,6 +48,32 @@
+@@ -54,6 +54,32 @@
    property bool useTransparentForeground: false
    property bool transparent: false
    property bool centerSectionHovered: false
@@ -63,7 +42,7 @@
    // One bar surface exists per monitor and each reports into this count, so a
    // pointer crossing from one monitor's bar to another's stays counted however
    // the enter and leave interleave. A single shared bool would be left false by
-@@ -327,7 +356,7 @@
+@@ -553,7 +579,7 @@
    }
  
    readonly property bool vertical: position === "left" || position === "right"
@@ -72,7 +51,7 @@
  
    function normalizePosition(value) {
      return BarModel.normalizePosition(value)
-@@ -392,6 +421,21 @@
+@@ -618,6 +644,21 @@
    function layoutEntries(region) {
      var serial = barConfigSerial
      var entries = layoutConfig ? layoutConfig[region] : null
@@ -94,29 +73,7 @@
      return Array.isArray(entries) ? entries : []
    }
  
-@@ -948,21 +992,6 @@
-     onFileChanged: barHiddenProbe.running = true
-   }
- 
--  // The directory watch can permanently stop delivering events after flag
--  // changes land in quick succession, stranding the bar off screen until the
--  // shell restarts. `omarchy-toggle-bar` nudges this after flipping the flag
--  // so the probe re-reads it even when the watch has gone quiet.
--  IpcHandler {
--    target: "omarchy.bar"
--
--    // Start rather than restart: a probe already in flight was launched by the
--    // directory watch after the flag flipped, so its answer is current, and
--    // killing it here can swallow the result entirely.
--    function syncHidden(): void {
--      barHiddenProbe.running = true
--    }
--  }
--
-   Variants {
-     model: Quickshell.screens
- 
-@@ -1004,13 +1033,32 @@
+@@ -1234,13 +1275,32 @@
    component BarPanel: PanelWindow {
      id: barWindow
  
@@ -150,7 +107,7 @@
  
      ScreenMoveRemap {
        id: remapGuard
-@@ -1018,10 +1066,14 @@
+@@ -1248,10 +1308,14 @@
      }
  
      margins {
@@ -169,7 +126,7 @@
      }
  
      anchors {
-@@ -1032,13 +1084,16 @@
+@@ -1262,13 +1326,16 @@
      }
  
      implicitWidth: root.vertical ? root.barSize : 0
@@ -188,7 +145,7 @@
        anchors.fill: parent
        sourceComponent: root.vertical ? verticalBar : horizontalBar
  
-@@ -1057,7 +1112,7 @@
+@@ -1287,7 +1354,7 @@
        id: tooltipWindow
  
        visible: root.tooltipShown && root.tooltipTarget !== null && root.tooltipText !== "" && root.targetBelongsToWindow(root.tooltipTarget, barWindow)
@@ -197,7 +154,7 @@
        implicitWidth: Math.ceil(tooltipBubble.implicitWidth)
        implicitHeight: Math.ceil(tooltipBubble.implicitHeight)
  
-@@ -1121,24 +1176,88 @@
+@@ -1351,20 +1418,84 @@
        id: horizontalBar
  
        Item {
@@ -217,11 +174,7 @@
 +        readonly property real pillY: islandPill.y
 +        readonly property real pillW: islandPill.width
 +        readonly property real pillH: islandPill.height
- 
--        LeftModules {
--          anchors.left: parent.left
--          anchors.leftMargin: Style.space(8)
--          anchors.verticalCenter: parent.verticalCenter
++
 +        BorderSurface {
 +          id: islandPill
 +          objectName: "romanhanIslandPill"
@@ -234,11 +187,20 @@
 +          opacity: root.islandPanelActive ? 0 : 1
 +          CenterGestureArea { anchors.fill: parent }
 +          Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
-+
+ 
+-        LeftModules {
+-          anchors.left: parent.left
+-          anchors.leftMargin: Style.space(8)
+-          anchors.verticalCenter: parent.verticalCenter
+-        }
 +          HoverHandler {
 +            onHoveredChanged: root.setCenterSectionHovered(hovered)
 +          }
-+
+ 
+-        RightModules {
+-          anchors.right: parent.right
+-          anchors.rightMargin: Style.space(8)
+-          anchors.verticalCenter: parent.verticalCenter
 +          RowLayout {
 +            id: islandRow
 +            anchors.centerIn: parent
@@ -285,28 +247,9 @@
 +            }
 +          }
          }
- 
--        RightModules {
--          anchors.right: parent.right
--          anchors.rightMargin: Style.space(8)
--          anchors.verticalCenter: parent.verticalCenter
-         }
--      }
-     }
--
-     Component {
-       id: verticalBar
- 
-@@ -1205,7 +1332,7 @@
-         anchors.fill: parent
-         color: root.transparent ? "transparent" : root.background
-         borderSpec: Border.flat(root.barForeground, 1)
--        radius: Math.min(Style.cornerRadius, height / 2)
-+        radius: height / 2
-         opacity: root.transparent ? 0.45 : 0.94
        }
- 
-@@ -1543,9 +1670,15 @@
+     }
+@@ -1773,9 +1904,15 @@
    component ModuleSlot: Item {
      id: slot
  
@@ -321,8 +264,8 @@
 +    readonly property bool slotRevealed: root.islandRevealed || root.islandCoreIds.indexOf(moduleName) !== -1
      readonly property var moduleSettings: root.entrySettings(entry)
      readonly property string customType: root.customModuleType(entry)
-     // Re-evaluate when the registry mutates (Component reference changes,
-@@ -1578,13 +1711,32 @@
+     readonly property var registryMetadata: root.barWidgetRegistry.metadataFor(root.canonicalWidgetId(moduleName))
+@@ -1811,13 +1950,32 @@
        if (hint !== undefined && hint !== null && hint > 0) return Math.round(hint)
        return Math.max(Style.space(10), Math.round((root.vertical ? slot.height : slot.width) * 0.55))
      }
@@ -360,7 +303,7 @@
      Component.onDestruction: {
        if (root.barDragSource === slot) root.clearBarDrag()
        root.unregisterModuleSlot(slot)
-@@ -1598,7 +1750,7 @@
+@@ -1831,7 +1989,7 @@
        anchors.margins: Style.space(1)
        color: root.transparent ? "transparent" : root.background
        borderSpec: Border.flat(root.barForeground, 1)
