@@ -23,10 +23,10 @@ darker_bg = "#070a0d"
 # Foreground shades
 fg = "#F2ECCD"
 light_fg = "#f4efd5"
-bright_fg = "#f5f1da"
+bright_fg = "#f9f5ea"
 dark_fg = "#b7c3b9"
 muted = "#7b8a8e"
-selection = "#F2ECCD"
+selection = "#172532"
 
 # Accent hues
 red = "#cf5a44"
