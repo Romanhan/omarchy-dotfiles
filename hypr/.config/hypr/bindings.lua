@@ -19,7 +19,6 @@ hl.unbind("SUPER + L")
 hl.unbind("SUPER + T")
 hl.unbind("SUPER + S")
 hl.unbind("SUPER + SLASH")
-hl.unbind("SUPER + CTRL + C")
 hl.unbind("SUPER + ALT + J")
 hl.unbind("SUPER + ALT + K")
 hl.unbind("SUPER + ALT + P")
@@ -33,7 +32,6 @@ o.bind("SUPER + ALT + L", "Toggle workspace layout", "omarchy-hyprland-workspace
 o.bind("SUPER + ALT + J", "Toggle split", hl.dsp.layout("togglesplit"))
 o.bind("SUPER + ALT + T", "Toggle floating", hl.dsp.window.float({ action = "toggle" }))
 o.bind("SUPER + ALT + S", "Toggle scratchpad", hl.dsp.workspace.toggle_special("scratchpad"))
-o.bind("SUPER + ALT + C", "Capture menu", "omarchy-menu toggle capture")
 
 -- Custom keybindings
 o.bind("SUPER + ALT + K", "Keybindings", "omarchy-menu-keybindings")
@@ -44,7 +42,7 @@ o.bind("SUPER + CTRL + 0", "Reveal hidden bar widgets", "omarchy-shell romanhan.
 o.bind("SUPER + Q", "Close window", hl.dsp.window.close())
 o.bind("SUPER + T", "Terminal", "omarchy-launch-terminal")
 o.bind("SUPER + S", "Superfile", "uwsm-app -- xdg-terminal-exec --dir=\"$(omarchy-cmd-terminal-cwd)\" -e spf")
-o.bind("SUPER + E", "File manager", { omarchy = "nautilus" })
+o.bind("SUPER + E", "File manager", { launch = "flea --gui" })
 o.bind("SUPER + B", "Browser", { omarchy = "browser" })
 o.bind("SUPER + ALT + B", "Browser (private)", { omarchy = "browser --private" })
 o.bind("SUPER + N", "Editor", { omarchy = "editor" })
@@ -77,3 +75,13 @@ o.bind("SUPER + CTRL + SHIFT + H", "Resize left", hl.dsp.window.resize({ x = -45
 o.bind("SUPER + CTRL + SHIFT + J", "Resize down", hl.dsp.window.resize({ x = 0, y = 45, relative = true }))
 o.bind("SUPER + CTRL + SHIFT + K", "Resize up", hl.dsp.window.resize({ x = 0, y = -45, relative = true }))
 o.bind("SUPER + CTRL + SHIFT + L", "Resize right", hl.dsp.window.resize({ x = 45, y = 0, relative = true }))
+
+-- flea --default: begin. Written by `flea --default`; `flea --default off` removes the block whole.
+hl.unbind("SUPER + SHIFT + F")
+hl.unbind("SUPER + ALT + SHIFT + F")
+o.bind("SUPER + ALT + SHIFT + F", "File manager (cwd)", { launch = 'flea --gui "$(omarchy-cmd-terminal-cwd)"' })
+-- flea --default: end.
+
+-- flea --picker: begin. Written by `flea --picker`; `flea --picker off` removes the block whole.
+o.window("com.thisisgm.flea.picker", { tag = "+floating-window" })
+-- flea --picker: end.
