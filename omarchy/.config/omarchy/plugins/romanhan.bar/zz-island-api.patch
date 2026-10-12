@@ -1,6 +1,6 @@
 --- a/Bar.qml
 +++ b/Bar.qml
-@@ -143,7 +143,33 @@
+@@ -155,7 +155,33 @@
  
    Component {
      id: pluginBarApiComponent
@@ -35,11 +35,11 @@
    }
  
    function publicLayoutConfig() {
-@@ -320,6 +346,7 @@
+@@ -343,6 +369,7 @@
      for (var i = 0; i < owned.length; i++) {
        var record = owned[i]
        if (!record || record.pluginId !== pluginId) continue
 +      if (root.islandPanelOwner === record.target) root.endIslandPanel(record.target)
        if (record.clickTarget) root.unregisterClickTarget(record.target)
        if (record.popout && root.activePopout === record.target) root.releasePopout(record.target)
-     }
+       pluginObjectOwners.delete(record.target)

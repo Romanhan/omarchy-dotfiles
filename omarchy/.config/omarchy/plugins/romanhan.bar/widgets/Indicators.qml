@@ -8,7 +8,7 @@ BarWidget {
   moduleName: "omarchy.indicators"
 
   readonly property var indicatorEntries: settings.items && settings.items.length
-    ? settings.items : ["Dictation", "ScreenRecording", "Reminder", "NightLight", "Dnd", "StayAwake"]
+    ? settings.items : ["Dictation", "PasswordlessSudo", "ScreenRecording", "RemoteSession", "Reminder", "NightLight", "Dnd", "StayAwake"]
   readonly property bool revealInactiveIndicators: false
   signal refreshRequested()
 
@@ -18,7 +18,7 @@ BarWidget {
   implicitWidth: indicators.implicitWidth
   implicitHeight: indicators.implicitHeight
 
-  IpcHandler {
+  ShellIpc {
     target: "omarchy.indicators"
     function refresh(): void { root.broadcast("refresh") }
     function status(): string {
