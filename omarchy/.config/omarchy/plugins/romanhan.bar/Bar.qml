@@ -1519,7 +1519,7 @@ Item {
     // +4 gives the pill 2px clearance from the surface edges on each side, so
     // fractional-scaling pixel snapping can never shave the rounded arcs.
     implicitHeight: root.vertical ? 0 : root.barSize + 4 + 2 * root.barGap
-    color: "transparent"
+    color: root.vertical ? (root.transparent ? "transparent" : (root.glassy ? root.glassBackground : root.background)) : "transparent"
     surfaceFormat.opaque: false
     WlrLayershell.namespace: "omarchy-bar"
     WlrLayershell.layer: WlrLayer.Top
@@ -1544,7 +1544,7 @@ Item {
       id: tooltipWindow
 
       visible: root.tooltipShown && root.tooltipTarget !== null && root.tooltipText !== "" && root.targetBelongsToWindow(root.tooltipTarget, barWindow)
-      color: root.vertical ? (root.transparent ? "transparent" : root.background) : "transparent"
+      color: root.vertical ? (root.transparent ? "transparent" : (root.glassy ? root.glassBackground : root.background)) : "transparent"
       implicitWidth: Math.ceil(tooltipBubble.implicitWidth)
       implicitHeight: Math.ceil(tooltipBubble.implicitHeight)
 
@@ -1632,7 +1632,7 @@ Item {
           width: root.islandPanelActive ? root.islandPanelWidth : islandRoot.contentWidth + 4
           height: root.barSize
           radius: root.islandPanelActive ? Style.cornerRadius : root.barSize / 2
-          color: root.transparent ? "transparent" : root.background
+          color: root.transparent ? "transparent" : (root.glassy ? root.glassBackground : root.background)
           borderSpec: Border.flat(root.barForeground, 0)
           opacity: root.islandPanelActive ? 0 : 1
           CenterGestureArea { anchors.fill: parent }
