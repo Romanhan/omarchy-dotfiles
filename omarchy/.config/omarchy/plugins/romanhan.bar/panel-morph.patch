@@ -1,9 +1,9 @@
 --- a/Bar.qml
 +++ b/Bar.qml
-@@ -124,6 +124,9 @@
-   property bool tooltipShown: false
-   property int tooltipRequest: 0
-   property var activePopout: null
+@@ -112,6 +112,9 @@
+     }
+     return false
+   }
 +  property var islandPanelOwner: null
 +  property real islandPanelWidth: 0
 +  readonly property bool islandPanelActive: islandPanelOwner !== null && islandPanelWidth > 0
