@@ -42,16 +42,81 @@
    // One bar surface exists per monitor and each reports into this count, so a
    // pointer crossing from one monitor's bar to another's stays counted however
    // the enter and leave interleave. A single shared bool would be left false by
-@@ -574,7 +600,7 @@
+@@ -112,6 +138,9 @@
+     }
+     return false
+   }
++  property var islandPanelOwner: null
++  property real islandPanelWidth: 0
++  readonly property bool islandPanelActive: islandPanelOwner !== null && islandPanelWidth > 0
+   property var barDragSource: null
+   property var barDragTarget: null
+   property var barDragTargetGeometry: null
+@@ -140,7 +169,33 @@
+ 
+   Component {
+     id: pluginBarApiComponent
+-    PluginBarApi { }
++    PluginBarApi {
++      // Preserve the scoped stock API while exposing our island animation hooks.
++      readonly property int islandGap: root.islandGap
++      readonly property bool islandRevealed: root.islandRevealed
++      function toggleIslandReveal() { root.toggleIslandReveal() }
++      function toggleTrayManager(anchor) {
++        if (moduleName !== "island-reveal") return
++        var window = root.targetWindow(anchor)
++        if (!window) return
++        var trays = root.moduleWidgets("romanhan.tray")
++        for (var i = 0; i < trays.length; i++) {
++          var tray = trays[i]
++          if (!root.targetBelongsToWindow(tray, window)) continue
++          root.islandRevealed = true
++          tray.managePopupOpen = !tray.managePopupOpen
++          return
++        }
++      }
++      function beginIslandPanel(owner, width) {
++        if (root.pluginOwnsBarObject(pluginId, owner))
++          root.beginIslandPanel(owner, width)
++      }
++      function endIslandPanel(owner) {
++        if (root.pluginOwnsBarObject(pluginId, owner))
++          root.endIslandPanel(owner)
++      }
++    }
    }
  
+   function publicLayoutConfig() {
+@@ -330,6 +385,7 @@
+     for (var i = 0; i < owned.length; i++) {
+       var record = owned[i]
+       if (!record || record.pluginId !== pluginId) continue
++      if (root.islandPanelOwner === record.target) root.endIslandPanel(record.target)
+       if (record.clickTarget) root.unregisterClickTarget(record.target)
+       if (record.popout && root.activePopout === record.target) root.releasePopout(record.target)
+       pluginObjectOwners.delete(record.target)
+@@ -589,8 +645,19 @@
+     if (activePopout === owner) activePopout = null
+   }
+ 
++  function beginIslandPanel(owner, width) {
++    islandPanelOwner = owner
++    islandPanelWidth = Math.max(root.barSize * 2, Number(width) || 0)
++  }
++
++  function endIslandPanel(owner) {
++    if (islandPanelOwner !== owner) return
++    islandPanelOwner = null
++    islandPanelWidth = 0
++  }
++
    readonly property bool vertical: position === "left" || position === "right"
 -  readonly property int barSize: vertical ? Style.bar.sizeVertical : Style.bar.sizeHorizontal
 +  readonly property int barSize: vertical ? Style.bar.sizeVertical : islandHeight
  
    // Display cutouts (a camera notch) the platform's own package describes in
    // the fixed platform root, which no environment variable moves. Most machines
-@@ -705,6 +731,21 @@
+@@ -732,6 +799,21 @@
    function layoutEntries(region) {
      var serial = barConfigSerial
      var entries = layoutConfig ? layoutConfig[region] : null
@@ -73,7 +138,7 @@
      return Array.isArray(entries) ? entries : []
    }
  
-@@ -1315,6 +1356,11 @@
+@@ -1358,6 +1440,11 @@
    component BarPanel: PanelWindow {
      id: barWindow
  
@@ -85,7 +150,7 @@
      // Hiding parks the bar just past its screen edge instead of unmapping it.
      // Unmapping frees the layer surface and the whole scene graph, so every
      // reveal has to rebuild them — new surface, re-shaped glyphs, re-uploaded
-@@ -1326,7 +1372,21 @@
+@@ -1369,7 +1456,21 @@
      // instead of growing once the windows are laid out. The wait ends once, for
      // good: when the mode settles it, or after two seconds without one.
      visible: !remapGuard.remapping && (cutoutWaitOver || !cutoutPending)
@@ -108,7 +173,7 @@
  
      ScreenMoveRemap {
        id: remapGuard
-@@ -1336,10 +1396,14 @@
+@@ -1379,10 +1480,14 @@
      // Parked by its full thickness, which a notch floor may make more than
      // barSize, so no strip of it stays on screen.
      margins {
@@ -127,7 +192,7 @@
      }
  
      anchors {
-@@ -1368,13 +1432,16 @@
+@@ -1411,13 +1516,16 @@
      readonly property int thickness: root.thicknessFor(screen)
  
      implicitWidth: root.vertical ? thickness : 0
@@ -146,7 +211,7 @@
        anchors.fill: parent
        sourceComponent: root.vertical ? verticalBar : horizontalBar
  
-@@ -1393,7 +1460,7 @@
+@@ -1436,7 +1544,7 @@
        id: tooltipWindow
  
        visible: root.tooltipShown && root.tooltipTarget !== null && root.tooltipText !== "" && root.targetBelongsToWindow(root.tooltipTarget, barWindow)
@@ -155,7 +220,7 @@
        implicitWidth: Math.ceil(tooltipBubble.implicitWidth)
        implicitHeight: Math.ceil(tooltipBubble.implicitHeight)
  
-@@ -1457,35 +1524,84 @@
+@@ -1500,35 +1608,89 @@
        id: horizontalBar
  
        Item {
@@ -188,8 +253,9 @@
 +        BorderSurface {
 +          id: islandPill
 +          objectName: "romanhanIslandPill"
++          antialiasing: true
 +          anchors.centerIn: parent
-+          width: islandRoot.contentWidth + 4
++          width: root.islandPanelActive ? root.islandPanelWidth : islandRoot.contentWidth + 4
 +          height: root.barSize
 +          radius: root.islandPanelActive ? Style.cornerRadius : root.barSize / 2
 +          color: root.transparent ? "transparent" : (root.glassy ? root.glassBackground : root.background)
@@ -223,6 +289,10 @@
 +            width: islandRoot.contentWidth
 +            height: parent.height
 +            spacing: 0
++            enabled: !root.islandPanelActive
++            opacity: root.islandPanelActive ? 0 : 1
++
++            Behavior on opacity { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
 +
 +            Item {
 +              implicitWidth: islandPad
@@ -265,7 +335,7 @@
          }
        }
      }
-@@ -1907,9 +2023,15 @@
+@@ -1959,9 +2121,15 @@
    component ModuleSlot: Item {
      id: slot
  
@@ -281,9 +351,9 @@
      readonly property var moduleSettings: root.entrySettings(entry)
      readonly property string customType: root.customModuleType(entry)
      readonly property var registryMetadata: root.barWidgetRegistry.metadataFor(root.canonicalWidgetId(moduleName))
-@@ -1945,13 +2067,32 @@
-       if (hint !== undefined && hint !== null && hint > 0) return Math.round(hint)
-       return Math.max(Style.space(10), Math.round((root.vertical ? slot.height : slot.width) * 0.55))
+@@ -2023,13 +2191,32 @@
+       var point = slot.mapToItem(host, x, y)
+       return point.x >= 0 && point.y >= 0 && point.x <= host.width && point.y <= host.height
      }
 -    implicitWidth: activeItem && activeItem.visible ? (root.vertical ? root.barSize : activeItem.implicitWidth) : 0
 -    implicitHeight: activeItem && activeItem.visible ? activeItem.implicitHeight : 0
@@ -319,7 +389,7 @@
      Component.onDestruction: {
        if (root.barDragSource === slot) root.clearBarDrag()
        root.unregisterModuleSlot(slot)
-@@ -1965,7 +2106,7 @@
+@@ -2043,7 +2230,7 @@
        anchors.margins: Style.space(1)
        color: root.transparent ? "transparent" : root.background
        borderSpec: Border.flat(root.barForeground, 1)
