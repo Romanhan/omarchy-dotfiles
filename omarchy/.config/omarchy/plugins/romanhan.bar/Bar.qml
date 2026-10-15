@@ -1831,9 +1831,14 @@ Item {
               Layout.preferredWidth: islandPad
               Layout.fillWidth: false
             }
+            // Each section names the edge its widgets grow from, so a widget
+            // that opens a drawer or grows (the tray) keeps that end put
+            // (WidgetHost.fixedEdge). Mirrors stock's Left/RightModules and
+            // CenterSections; a centered tray keeps the end-fixed arrangement.
             ModuleList {
               region: "left"
               keys: root.layoutWidgets.sections.left
+              fixedEdge: "start"
               window: barWindow
               pool: horizontalPool
               Layout.preferredWidth: implicitWidth
@@ -1847,6 +1852,7 @@ Item {
             ModuleList {
               region: "centerBegin"
               keys: root.layoutWidgets.sections.centerBegin
+              fixedEdge: "end"
               window: barWindow
               pool: horizontalPool
               Layout.preferredWidth: implicitWidth
@@ -1854,6 +1860,7 @@ Item {
             ModuleList {
               region: "center"
               keys: root.layoutWidgets.sections.center
+              fixedEdge: "center"
               window: barWindow
               pool: horizontalPool
               Layout.preferredWidth: implicitWidth
@@ -1861,6 +1868,7 @@ Item {
             ModuleList {
               region: "centerEnd"
               keys: root.layoutWidgets.sections.centerEnd
+              fixedEdge: "start"
               window: barWindow
               pool: horizontalPool
               Layout.preferredWidth: implicitWidth
@@ -1872,6 +1880,7 @@ Item {
             ModuleList {
               region: "right"
               keys: root.layoutWidgets.sections.right
+              fixedEdge: "end"
               window: barWindow
               pool: horizontalPool
               Layout.preferredWidth: implicitWidth

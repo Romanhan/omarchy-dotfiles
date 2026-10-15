@@ -1,5 +1,5 @@
---- a/Bar.qml	2026-10-15 11:01:21.308521101 +0300
-+++ b/Bar.qml	2026-10-15 11:01:21.309801128 +0300
+--- a/Bar.qml	2026-10-15 14:37:15.967924998 +0300
++++ b/Bar.qml	2026-10-15 14:37:15.969400758 +0300
 @@ -59,6 +59,32 @@
    // The look the blur behind the bar was last synced for. A background set by
    // editing shell.json skips the CLI, so the bar syncs Hyprland's blur itself.
@@ -191,7 +191,7 @@
        implicitWidth: Math.ceil(tooltipBubble.implicitWidth)
        implicitHeight: Math.ceil(tooltipBubble.implicitHeight)
  
-@@ -1673,48 +1768,122 @@
+@@ -1673,48 +1768,131 @@
        id: horizontalBar
  
        Item {
@@ -295,9 +295,14 @@
 +              Layout.preferredWidth: islandPad
 +              Layout.fillWidth: false
 +            }
++            // Each section names the edge its widgets grow from, so a widget
++            // that opens a drawer or grows (the tray) keeps that end put
++            // (WidgetHost.fixedEdge). Mirrors stock's Left/RightModules and
++            // CenterSections; a centered tray keeps the end-fixed arrangement.
 +            ModuleList {
 +              region: "left"
 +              keys: root.layoutWidgets.sections.left
++              fixedEdge: "start"
 +              window: barWindow
 +              pool: horizontalPool
 +              Layout.preferredWidth: implicitWidth
@@ -311,6 +316,7 @@
 +            ModuleList {
 +              region: "centerBegin"
 +              keys: root.layoutWidgets.sections.centerBegin
++              fixedEdge: "end"
 +              window: barWindow
 +              pool: horizontalPool
 +              Layout.preferredWidth: implicitWidth
@@ -318,6 +324,7 @@
 +            ModuleList {
 +              region: "center"
 +              keys: root.layoutWidgets.sections.center
++              fixedEdge: "center"
 +              window: barWindow
 +              pool: horizontalPool
 +              Layout.preferredWidth: implicitWidth
@@ -325,6 +332,7 @@
 +            ModuleList {
 +              region: "centerEnd"
 +              keys: root.layoutWidgets.sections.centerEnd
++              fixedEdge: "start"
 +              window: barWindow
 +              pool: horizontalPool
 +              Layout.preferredWidth: implicitWidth
@@ -336,6 +344,7 @@
 +            ModuleList {
 +              region: "right"
 +              keys: root.layoutWidgets.sections.right
++              fixedEdge: "end"
 +              window: barWindow
 +              pool: horizontalPool
 +              Layout.preferredWidth: implicitWidth
@@ -351,7 +360,7 @@
          }
        }
      }
-@@ -1995,7 +2164,7 @@
+@@ -1995,7 +2173,7 @@
      anchors.margins: Style.space(1)
      color: root.transparent ? "transparent" : root.background
      borderSpec: Border.flat(root.barForeground, 1)
@@ -360,7 +369,7 @@
      opacity: root.transparent ? 0.22 : 0.32
    }
  
-@@ -2424,6 +2593,11 @@
+@@ -2424,6 +2602,11 @@
    component ModuleSlot: Item {
      id: slot
  
@@ -372,7 +381,7 @@
      property string widgetKey: ""
      property string region: ""
      property string fixedEdge: "center"
-@@ -2495,6 +2669,10 @@
+@@ -2495,6 +2678,10 @@
      }
      readonly property real widgetWidth: host ? host.widgetWidth : 0
      readonly property real widgetHeight: host ? host.widgetHeight : 0
@@ -383,7 +392,7 @@
      // Its length along the bar. The dragged widget keeps its place's share
      // of the room: all of it until the room moves away.
      readonly property real alongLength: dragSource
-@@ -2510,8 +2688,24 @@
+@@ -2510,8 +2697,24 @@
      // Handed to it as preferred sizes, since a layout left to read a size
      // that drops from a fraction of a pixel to nothing keeps the old size,
      // leaving a hole where a widget hid itself.
