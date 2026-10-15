@@ -1,18 +1,9 @@
---- a/Bar.qml
-+++ b/Bar.qml
-@@ -46,7 +46,7 @@
-   property var fallbackBarConfig: ({
-     position: "top",
-     background: "opaque",
--    centerAnchor: "omarchy.clock",
-+    centerAnchor: "romanhan.clock",
-     layout: { left: [], center: [], right: [] }
-   })
-   property var layoutConfig: fallbackBarConfig.layout
-@@ -61,6 +61,32 @@
+--- a/Bar.qml	2026-10-15 11:01:21.308521101 +0300
++++ b/Bar.qml	2026-10-15 11:01:21.309801128 +0300
+@@ -59,6 +59,32 @@
+   // The look the blur behind the bar was last synced for. A background set by
    // editing shell.json skips the CLI, so the bar syncs Hyprland's blur itself.
    property string glassSyncedLook: ""
-   property bool centerSectionHovered: false
 +  // Dynamic island: when false only the core widgets are shown and the bar
 +  // shrinks to a floating pill; revealing mounts the hidden layout widgets.
 +  property bool islandRevealed: false
@@ -50,9 +41,9 @@
 +  property real islandPanelWidth: 0
 +  readonly property bool islandPanelActive: islandPanelOwner !== null && islandPanelWidth > 0
    property var barDragSource: null
-   property var barDragTarget: null
-   property var barDragTargetGeometry: null
-@@ -140,7 +169,33 @@
+   // Where the dragged widget would land: { slot, after } beside a widget, or
+   // { region, after } at an end of a section (see BarModel.centerDropTarget
+@@ -174,7 +203,33 @@
  
    Component {
      id: pluginBarApiComponent
@@ -87,7 +78,7 @@
    }
  
    function publicLayoutConfig() {
-@@ -330,6 +385,7 @@
+@@ -364,6 +419,7 @@
      for (var i = 0; i < owned.length; i++) {
        var record = owned[i]
        if (!record || record.pluginId !== pluginId) continue
@@ -95,10 +86,12 @@
        if (record.clickTarget) root.unregisterClickTarget(record.target)
        if (record.popout && root.activePopout === record.target) root.releasePopout(record.target)
        pluginObjectOwners.delete(record.target)
-@@ -589,8 +645,19 @@
+@@ -655,8 +711,21 @@
      if (activePopout === owner) activePopout = null
    }
  
++  // Width of an island panel (the tray's manage popup) while it is open, so
++  // the pill can widen into a rounded card around it instead of clipping it.
 +  function beginIslandPanel(owner, width) {
 +    islandPanelOwner = owner
 +    islandPanelWidth = Math.max(root.barSize * 2, Number(width) || 0)
@@ -116,29 +109,7 @@
  
    // Display cutouts (a camera notch) the platform's own package describes in
    // the fixed platform root, which no environment variable moves. Most machines
-@@ -732,6 +799,21 @@
-   function layoutEntries(region) {
-     var serial = barConfigSerial
-     var entries = layoutConfig ? layoutConfig[region] : null
-+    if (!Array.isArray(entries)) return []
-+    if (!root.islandRevealed) {
-+      var core = root.islandCoreIds
-+      entries = entries.filter(function(entry) {
-+        return core.indexOf(root.entryId(entry)) !== -1
-+      })
-+    }
-+    return entries
-+  }
-+
-+  // Unfiltered layout for a region. The island mounts every entry at all
-+  // times and gates each slot's width/opacity on reveal state, so the pill
-+  // morphs in lock-step with the content instead of lagging behind it.
-+  function fullLayoutEntries(region) {
-+    var entries = layoutConfig ? layoutConfig[region] : null
-     return Array.isArray(entries) ? entries : []
-   }
- 
-@@ -1358,6 +1440,11 @@
+@@ -1531,6 +1600,11 @@
    component BarPanel: PanelWindow {
      id: barWindow
  
@@ -150,7 +121,7 @@
      // Hiding parks the bar just past its screen edge instead of unmapping it.
      // Unmapping frees the layer surface and the whole scene graph, so every
      // reveal has to rebuild them — new surface, re-shaped glyphs, re-uploaded
-@@ -1369,7 +1456,21 @@
+@@ -1542,7 +1616,21 @@
      // instead of growing once the windows are laid out. The wait ends once, for
      // good: when the mode settles it, or after two seconds without one.
      visible: !remapGuard.remapping && (cutoutWaitOver || !cutoutPending)
@@ -173,7 +144,7 @@
  
      ScreenMoveRemap {
        id: remapGuard
-@@ -1379,10 +1480,14 @@
+@@ -1552,10 +1640,14 @@
      // Parked by its full thickness, which a notch floor may make more than
      // barSize, so no strip of it stays on screen.
      margins {
@@ -192,7 +163,7 @@
      }
  
      anchors {
-@@ -1411,13 +1516,16 @@
+@@ -1584,13 +1676,16 @@
      readonly property int thickness: root.thicknessFor(screen)
  
      implicitWidth: root.vertical ? thickness : 0
@@ -211,7 +182,7 @@
        anchors.fill: parent
        sourceComponent: root.vertical ? verticalBar : horizontalBar
  
-@@ -1436,7 +1544,7 @@
+@@ -1609,7 +1704,7 @@
        id: tooltipWindow
  
        visible: root.tooltipShown && root.tooltipTarget !== null && root.tooltipText !== "" && root.targetBelongsToWindow(root.tooltipTarget, barWindow)
@@ -220,21 +191,36 @@
        implicitWidth: Math.ceil(tooltipBubble.implicitWidth)
        implicitHeight: Math.ceil(tooltipBubble.implicitHeight)
  
-@@ -1500,35 +1608,89 @@
+@@ -1673,48 +1768,122 @@
        id: horizontalBar
  
        Item {
 +        id: islandRoot
          anchors.fill: parent
  
+         WidgetPool { id: horizontalPool }
+ 
 -        CenterModules {
 -          anchors.fill: parent
--          entries: barWindow.centerBesideRight ? [] : root.layoutEntries("center")
+-          window: barWindow
+-          pool: horizontalPool
+-          drawn: !barWindow.centerBesideRight
 -        }
 -
 -        LeftModules {
+-          window: barWindow
+-          pool: horizontalPool
 -          anchors.left: parent.left
 -          anchors.leftMargin: Style.space(8)
+-          anchors.verticalCenter: parent.verticalCenter
+-        }
+-
+-        RightModules {
+-          window: barWindow
+-          pool: horizontalPool
+-          id: rightModules
+-          anchors.right: parent.right
+-          anchors.rightMargin: Style.space(8)
 -          anchors.verticalCenter: parent.verticalCenter
 -        }
 +        // The horizontal island: a centered pill that animates its width as
@@ -263,26 +249,34 @@
 +          opacity: root.islandPanelActive ? 0 : 1
 +          CenterGestureArea { anchors.fill: parent }
 +          Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
- 
--        RightModules {
--          id: rightModules
--          anchors.right: parent.right
--          anchors.rightMargin: Style.space(8)
--          anchors.verticalCenter: parent.verticalCenter
--        }
++
++          // Hovering the pill holds the indicator peek open, the way the whole
++          // bar's hover handler does on a stock bar.
 +          HoverHandler {
-+            onHoveredChanged: root.setCenterSectionHovered(hovered)
++            onHoveredChanged: {
++              if (hovered) {
++                root.centerSectionRevealTimer.stop()
++                root.centerSectionRevealHeld = true
++              } else {
++                root.centerSectionRevealTimer.restart()
++              }
++            }
 +          }
  
--        // Keeps the center region, so settings pushes, drag and drop, and panel
--        // routing still address it. The gap lets a drop at the seam land in
--        // the section the pointer is nearer to.
--        ModuleList {
--          entries: barWindow.centerBesideRight ? root.layoutEntries("center") : []
--          region: "center"
+-        // Where a display notch covers the middle of the bar, the center
+-        // sections run on just left of the right one. They keep their regions,
+-        // so settings pushes, drag and drop, and panel routing still address
+-        // them. The gap lets a drop at the seam land in the section the pointer
+-        // is nearer to.
+-        CenterSections {
+-          window: barWindow
+-          pool: horizontalPool
+-          active: barWindow.centerBesideRight
+-          besideRight: true
 -          anchors.right: rightModules.left
 -          anchors.rightMargin: Style.space(4)
--          anchors.verticalCenter: parent.verticalCenter
+-          anchors.top: parent.top
+-          anchors.bottom: parent.bottom
 +          RowLayout {
 +            id: islandRow
 +            anchors.centerIn: parent
@@ -303,17 +297,37 @@
 +            }
 +            ModuleList {
 +              region: "left"
-+              entries: root.fullLayoutEntries("left")
-+              Layout.preferredWidth: item ? item.implicitWidth : 0
++              keys: root.layoutWidgets.sections.left
++              window: barWindow
++              pool: horizontalPool
++              Layout.preferredWidth: implicitWidth
 +            }
 +            Item {
 +              implicitWidth: root.islandModuleGap
 +              implicitHeight: 1
 +            }
++            // The center box and the two sections hanging off it, so the new
++            // five-section layout works inside the pill unchanged.
++            ModuleList {
++              region: "centerBegin"
++              keys: root.layoutWidgets.sections.centerBegin
++              window: barWindow
++              pool: horizontalPool
++              Layout.preferredWidth: implicitWidth
++            }
 +            ModuleList {
 +              region: "center"
-+              entries: root.fullLayoutEntries("center")
-+              Layout.preferredWidth: item ? item.implicitWidth : 0
++              keys: root.layoutWidgets.sections.center
++              window: barWindow
++              pool: horizontalPool
++              Layout.preferredWidth: implicitWidth
++            }
++            ModuleList {
++              region: "centerEnd"
++              keys: root.layoutWidgets.sections.centerEnd
++              window: barWindow
++              pool: horizontalPool
++              Layout.preferredWidth: implicitWidth
 +            }
 +            Item {
 +              implicitWidth: root.islandModuleGap
@@ -321,8 +335,10 @@
 +            }
 +            ModuleList {
 +              region: "right"
-+              entries: root.fullLayoutEntries("right")
-+              Layout.preferredWidth: item ? item.implicitWidth : 0
++              keys: root.layoutWidgets.sections.right
++              window: barWindow
++              pool: horizontalPool
++              Layout.preferredWidth: implicitWidth
 +            }
 +            Item {
 +              implicitWidth: islandPad
@@ -335,7 +351,16 @@
          }
        }
      }
-@@ -1959,9 +2121,15 @@
+@@ -1995,7 +2164,7 @@
+     anchors.margins: Style.space(1)
+     color: root.transparent ? "transparent" : root.background
+     borderSpec: Border.flat(root.barForeground, 1)
+-    radius: Math.min(Style.cornerRadius, Math.min(width, height) / 2)
++    radius: Math.min(width, height) / 2
+     opacity: root.transparent ? 0.22 : 0.32
+   }
+ 
+@@ -2424,6 +2593,11 @@
    component ModuleSlot: Item {
      id: slot
  
@@ -344,30 +369,34 @@
 +      NumberAnimation { duration: 280; easing.type: Easing.OutQuint }
 +    }
 +
-     required property var entry
+     property string widgetKey: ""
      property string region: ""
-     readonly property string moduleName: root.entryId(entry)
-+    readonly property bool slotRevealed: root.islandRevealed || root.islandCoreIds.indexOf(moduleName) !== -1
-     readonly property var moduleSettings: root.entrySettings(entry)
-     readonly property string customType: root.customModuleType(entry)
-     readonly property var registryMetadata: root.barWidgetRegistry.metadataFor(root.canonicalWidgetId(moduleName))
-@@ -2023,13 +2191,32 @@
-       var point = slot.mapToItem(host, x, y)
-       return point.x >= 0 && point.y >= 0 && point.x <= host.width && point.y <= host.height
+     property string fixedEdge: "center"
+@@ -2495,6 +2669,10 @@
      }
--    implicitWidth: activeItem && activeItem.visible ? (root.vertical ? root.barSize : activeItem.implicitWidth) : 0
--    implicitHeight: activeItem && activeItem.visible ? activeItem.implicitHeight : 0
--    width: implicitWidth
--    height: implicitHeight
+     readonly property real widgetWidth: host ? host.widgetWidth : 0
+     readonly property real widgetHeight: host ? host.widgetHeight : 0
++    // Widgets not on the island collapse to nothing so the pill hugs what it
++    // shows. `moduleName` is the widget's id (WidgetHost); the model key is
++    // `id#serial` and would never match islandCoreIds.
++    readonly property bool slotRevealed: root.islandRevealed || root.islandCoreIds.indexOf(moduleName) !== -1
+     // Its length along the bar. The dragged widget keeps its place's share
+     // of the room: all of it until the room moves away.
+     readonly property real alongLength: dragSource
+@@ -2510,8 +2688,24 @@
+     // Handed to it as preferred sizes, since a layout left to read a size
+     // that drops from a fraction of a pixel to nothing keeps the old size,
+     // leaving a hole where a widget hid itself.
+-    implicitWidth: root.vertical ? widgetWidth : alongLength
+-    implicitHeight: root.vertical ? alongLength : widgetHeight
 +    // Tide-island style synchronized reveal: the slot box animates in lockstep
 +    // with the pill's own width Behavior, so content never overflows the rounded
 +    // capsule (which produced the straight clip line on reveal / content change).
-+    readonly property real slotTargetWidth: slotRevealed
-+      ? (activeItem && activeItem.visible
-+          ? (root.vertical ? root.barSize : activeItem.implicitWidth)
-+          : (activeItem && slot.moduleName === "omarchy.weather" ? activeItem.implicitWidth : 0))
-+      : 0
-+    readonly property real slotTargetHeight: slotRevealed && activeItem && activeItem.visible ? activeItem.implicitHeight : 0
++    // A dragged slot keeps stock's sizing, since its room is what moves.
++    readonly property real slotTargetWidth: slotRevealed || dragSource
++      ? (root.vertical ? widgetWidth : alongLength) : 0
++    readonly property real slotTargetHeight: slotRevealed || dragSource
++      ? (root.vertical ? alongLength : widgetHeight) : 0
 +    property real slotAnimWidth: slotTargetWidth
 +    property real slotAnimHeight: slotTargetHeight
 +    Behavior on slotAnimWidth {
@@ -378,23 +407,6 @@
 +    }
 +    implicitWidth: slotAnimWidth
 +    implicitHeight: slotAnimHeight
-+    width: slotAnimWidth
-+    height: slotAnimHeight
-     z: modulePointer.dragging ? 100 : 0
- 
--    Component.onCompleted: root.registerModuleSlot(slot)
-+    Component.onCompleted: {
-+      root.registerModuleSlot(slot)
-+    }
-     Component.onDestruction: {
-       if (root.barDragSource === slot) root.clearBarDrag()
-       root.unregisterModuleSlot(slot)
-@@ -2043,7 +2230,7 @@
-       anchors.margins: Style.space(1)
-       color: root.transparent ? "transparent" : root.background
-       borderSpec: Border.flat(root.barForeground, 1)
--      radius: Math.min(Style.cornerRadius, height / 2)
-+      radius: height / 2
-       opacity: root.transparent ? 0.22 : 0.32
-     }
- 
+     Layout.preferredWidth: implicitWidth
+     Layout.preferredHeight: implicitHeight
+     Layout.alignment: Qt.AlignLeft | Qt.AlignTop
