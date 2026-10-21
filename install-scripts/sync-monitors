@@ -14,6 +14,16 @@ source_file="$repo/hypr/.config/hypr/monitors.lua"
 [ -L "$live" ] && exit 0
 
 cp "$live" "$source_file"
-rm -f "$live"
-cd "$repo"
-stow hypr
+
+# Replace the file with a symlink in one rename. Removing it first leaves a
+# window where Hyprland's config watcher can reload and report a missing
+# module (hypr.monitors).
+relative=$(realpath --relative-to="$(dirname -- "$live")" "$source_file")
+temporary="$live.tmp.$$"
+trap 'rm -f -- "$temporary"' EXIT
+
+ln -s "$relative" "$temporary"
+mv -T -- "$temporary" "$live"
+
+# Re-read the config so a transient error from the rewrite is cleared.
+hyprctl reload >/dev/null 2>&1 || true

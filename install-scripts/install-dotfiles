@@ -18,7 +18,10 @@ STOW_PACKAGES=(bash kitty hypr superfile omarchy vscode)
 for package in "${STOW_PACKAGES[@]}"; do
   if [ -d "$package" ]; then
     echo "Stowing $package..."
-    stow --restow "$package"
+    # Plain stow is idempotent and, unlike --restow, never unlinks a correct
+    # symlink first. Hyprland and the shell watch these paths and would see a
+    # missing monitors.lua/shell file during the gap.
+    stow "$package"
   else
     echo "Warning: $package not found, skipping"
   fi

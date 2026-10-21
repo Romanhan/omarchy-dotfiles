@@ -29,7 +29,8 @@ Finish with `omarchy restart shell`.
   with `install-scripts/sync-shell-json --push`.
 - **`monitors.lua`** is stowed, but Omarchy's monitor-scaling shortcut rewrites
   it with `sed -i`. The keybinding wrapper runs
-  `install-scripts/sync-monitors` afterwards to restore the symlink.
+  `install-scripts/sync-monitors` afterwards, which copies the live file back
+  into the repo and swaps in the symlink with one atomic rename.
 - **Dynamic island bar** is generated from the installed stock bar plus
   `island.patch`. After an Omarchy update run
   `omarchy/.config/omarchy/plugins/romanhan.bar/rebuild` (the post-update hook
@@ -38,5 +39,6 @@ Finish with `omarchy restart shell`.
   by `install-scripts/install-themes` and ignored by git. The small custom
   themes (`aether`, `redbull`) are tracked.
 - **Flea** is installed from Omarchy's repo. Run `flea --default` once if it is
-  not already the default file manager, then run `stow --restow hypr` in case
-  it replaced the bindings symlink.
+  not already the default file manager. If it replaced the `bindings.lua`
+  symlink with a regular file, run `stow --adopt hypr` and review
+  `git diff hypr/` before committing.
