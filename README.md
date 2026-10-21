@@ -38,4 +38,5 @@ Finish with `omarchy restart shell`.
   by `install-scripts/install-themes` and ignored by git. The small custom
   themes (`aether`, `redbull`) are tracked.
 - **Flea** is installed from Omarchy's repo. Run `flea --default` once if it is
-  not already the default file manager.
+  not already the default file manager, then run `stow --restow hypr` in case
+  it replaced the bindings symlink.
