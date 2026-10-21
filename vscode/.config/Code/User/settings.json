@@ -1,5 +1,4 @@
-{ "workbench.colorTheme": "Ship at Sea",
-    
+{
     "workbench.secondarySideBar.defaultVisibility": "hidden",
     "editor.lineNumbers": "relative",
     // sidebar to right

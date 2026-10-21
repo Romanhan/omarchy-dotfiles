@@ -17,26 +17,12 @@ source "$OMARCHY_PATH/default/bash/rc"
 # Add your own exports, aliases, and functions here.
 alias rm='trash -v'
 alias cat='bat'
-alias update='sudo pacman -Syu'
 
 # Git
 alias gst='git status'
 
 # ssh
 alias sshk='kitty +kitten ssh'
-
-# Tailscale
-alias tup='sudo tailscale up && pkill -RTMIN+10 waybar'
-alias tdn='sudo tailscale down && pkill -RTMIN+10 waybar'
-
-# Yazi
-function y() {
-	local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
-	command yazi "$@" --cwd-file="$tmp"
-	IFS= read -r -d '' cwd < "$tmp"
-	[ "$cwd" != "$PWD" ] && [ -d "$cwd" ] && builtin cd -- "$cwd"
-	rm -f -- "$tmp"
-}
 
 . "$HOME/.local/share/../bin/env"
 export LIBVIRT_DEFAULT_URI="qemu:///system"
