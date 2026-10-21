@@ -1,5 +1,5 @@
---- a/Bar.qml	2026-10-15 14:37:15.967924998 +0300
-+++ b/Bar.qml	2026-10-15 14:37:15.969400758 +0300
+--- a/Bar.qml
++++ b/Bar.qml
 @@ -59,6 +59,32 @@
    // The look the blur behind the bar was last synced for. A background set by
    // editing shell.json skips the CLI, so the bar syncs Hyprland's blur itself.
@@ -191,7 +191,7 @@
        implicitWidth: Math.ceil(tooltipBubble.implicitWidth)
        implicitHeight: Math.ceil(tooltipBubble.implicitHeight)
  
-@@ -1673,48 +1768,131 @@
+@@ -1673,48 +1768,133 @@
        id: horizontalBar
  
        Item {
@@ -254,10 +254,12 @@
 +          // bar's hover handler does on a stock bar.
 +          HoverHandler {
 +            onHoveredChanged: {
++              // The timer is already gone when the bar is torn down on a
++              // scale or monitor change, but the hover handler can still fire.
 +              if (hovered) {
-+                root.centerSectionRevealTimer.stop()
++                if (root.centerSectionRevealTimer) root.centerSectionRevealTimer.stop()
 +                root.centerSectionRevealHeld = true
-+              } else {
++              } else if (root.centerSectionRevealTimer) {
 +                root.centerSectionRevealTimer.restart()
 +              }
 +            }
@@ -360,7 +362,7 @@
          }
        }
      }
-@@ -1995,7 +2173,7 @@
+@@ -1995,7 +2175,7 @@
      anchors.margins: Style.space(1)
      color: root.transparent ? "transparent" : root.background
      borderSpec: Border.flat(root.barForeground, 1)
@@ -369,7 +371,7 @@
      opacity: root.transparent ? 0.22 : 0.32
    }
  
-@@ -2424,6 +2602,11 @@
+@@ -2424,6 +2604,11 @@
    component ModuleSlot: Item {
      id: slot
  
@@ -381,7 +383,7 @@
      property string widgetKey: ""
      property string region: ""
      property string fixedEdge: "center"
-@@ -2495,6 +2678,10 @@
+@@ -2495,6 +2680,10 @@
      }
      readonly property real widgetWidth: host ? host.widgetWidth : 0
      readonly property real widgetHeight: host ? host.widgetHeight : 0
@@ -392,7 +394,7 @@
      // Its length along the bar. The dragged widget keeps its place's share
      // of the room: all of it until the room moves away.
      readonly property real alongLength: dragSource
-@@ -2510,8 +2697,24 @@
+@@ -2510,8 +2699,24 @@
      // Handed to it as preferred sizes, since a layout left to read a size
      // that drops from a fraction of a pixel to nothing keeps the old size,
      // leaving a hole where a widget hid itself.

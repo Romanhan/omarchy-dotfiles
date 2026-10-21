@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Wayland
 import qs.Commons
 
+import qs.Commons as Commons
 // Layer-shell popup attached to a bar widget icon, designed for
 // click-driven AND keyboard-driven panels (e.g. SUPER+CTRL+W summon).
 //
@@ -432,7 +433,7 @@ PanelWindow {
     y: mix(startY, root.cardOrigin.y)
     width: mix(startWidth, root.contentWidth)
     height: mix(startHeight, root.contentHeight)
-    color: root.bar ? root.bar.background : Color.popups.background
+    color: root.bar ? root.bar.background : Commons.Color.popups.background
     topLeftRadius: mix(startRadius, Style.cornerRadius)
     topRightRadius: mix(startRadius, Style.cornerRadius)
     bottomLeftRadius: mix(startRadius, Style.cornerRadius)

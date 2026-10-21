@@ -1804,10 +1804,12 @@ Item {
           // bar's hover handler does on a stock bar.
           HoverHandler {
             onHoveredChanged: {
+              // The timer is already gone when the bar is torn down on a
+              // scale or monitor change, but the hover handler can still fire.
               if (hovered) {
-                root.centerSectionRevealTimer.stop()
+                if (root.centerSectionRevealTimer) root.centerSectionRevealTimer.stop()
                 root.centerSectionRevealHeld = true
-              } else {
+              } else if (root.centerSectionRevealTimer) {
                 root.centerSectionRevealTimer.restart()
               }
             }

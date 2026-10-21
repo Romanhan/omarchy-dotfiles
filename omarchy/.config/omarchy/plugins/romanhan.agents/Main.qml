@@ -64,6 +64,13 @@ Item {
     onObjectRemoved: (index, object) => root.rebuildAgents()
   }
 
+  // Each record's FileView follows its file on its own; this catches the ones
+  // whose watch was lost when an update replaced the file underneath them.
+  function reloadRecords() {
+    for (var i = 0; i < agents.length; i++)
+      if (agents[i]) agents[i].reload()
+  }
+
   function rebuildAgents() {
     var result = []
     for (var i = 0; i < agentInstantiator.count; i++) {
@@ -117,12 +124,32 @@ Item {
   property int refreshIntervalSec: Math.max(30, Number(setting("refreshIntervalSec", 900)))
   property string pendingUpdateKind: ""
 
+  // A fifteen-minute interval can't catch an account crossing its switch
+  // threshold, so while any provider with several accounts has its active one
+  // within 15 points of that threshold (80% at the default 95%), the limits
+  // are checked every three minutes. Those runs
+  // reuse the transcript scans; only the limits probes are new, and any more
+  // often than this Anthropic starts refusing them.
+  readonly property bool nearLimit: {
+    var rev = dataRevision
+    for (var i = 0; i < agents.length; i++) {
+      var record = agents[i] ? agents[i].record : null
+      if (!record || !Array.isArray(record.accounts) || record.accounts.length < 2) continue
+      var limits = Array.isArray(record.limits) ? record.limits : []
+      var threshold = Number(record.accountSwitch && record.accountSwitch.threshold || 95)
+      var from = Math.min(0.8, (threshold - 15) / 100)
+      for (var j = 0; j < limits.length; j++)
+        if (Number(limits[j] && limits[j].percent) >= from) return true
+    }
+    return false
+  }
+
   Timer {
-    interval: root.refreshIntervalSec * 1000
+    interval: root.nearLimit ? Math.min(180, root.refreshIntervalSec) * 1000 : root.refreshIntervalSec * 1000
     running: true
     repeat: true
     triggeredOnStart: true
-    onTriggered: root.runUpdate("normal")
+    onTriggered: root.runUpdate(root.nearLimit ? "limits" : "normal")
   }
 
   Process {
@@ -130,6 +157,7 @@ Item {
     running: false
     onExited: {
       root.rescanAgents()
+      root.reloadRecords()
       if (root.pendingUpdateKind !== "") {
         var kind = root.pendingUpdateKind
         root.pendingUpdateKind = ""

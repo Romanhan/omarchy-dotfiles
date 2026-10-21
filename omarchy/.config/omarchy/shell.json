@@ -1,16 +1,17 @@
 {
   "bar": {
-    "centerAnchor": "",
+    "background": "opaque",
+    "id": "romanhan.bar",
     "layout": {
       "center": [
         {
           "id": "omarchy.indicators",
-          "type": "qml",
-          "source": "~/.config/omarchy/plugins/romanhan.bar/widgets/Indicators.qml"
+          "source": "~/.config/omarchy/plugins/romanhan.bar/widgets/Indicators.qml",
+          "type": "qml"
         },
         {
-          "id": "omacom.elsewhen",
-          "zones": "Tallinn|Europe/Tallinn, New York|America/New_York, Baku|Asia/Baku"
+          "id": "omarchy.elsewhen",
+          "zones": "Tallinn|Europe/Tallinn, New York|America/New_York"
         },
         {
           "format": "dddd HH:mm",
@@ -19,27 +20,29 @@
           "verticalFormat": "HH\n—\nmm"
         },
         {
-          "id": "omarchy.keyboard-layout"
-        },
-        {
           "id": "omarchy.system-update"
         },
         {
           "id": "romanhan.media"
         }
       ],
+      "centerBegin": [],
+      "centerEnd": [],
       "left": [
         {
           "id": "omarchy.workspaces",
-          "type": "qml",
-          "source": "~/.config/omarchy/plugins/romanhan.bar/widgets/Workspaces.qml"
+          "source": "~/.config/omarchy/plugins/romanhan.bar/widgets/Workspaces.qml",
+          "type": "qml"
         }
       ],
       "right": [
         {
+          "id": "omarchy.keyboard-layout"
+        },
+        {
+          "hidden": [],
           "id": "romanhan.tray",
-          "pinned": [],
-          "hidden": []
+          "pinned": []
         },
         {
           "id": "romanhan.tailscale"
@@ -60,18 +63,21 @@
           "id": "romanhan.monitor"
         },
         {
-          "id": "romanhan.power"
+          "id": "romanhan.power",
+          "showPercentage": false
         },
         {
           "id": "island-reveal",
           "type": "qml"
         }
-      ]
+      ],
+      "tray": []
     },
-    "position": "top",
-    "background": "opaque",
-    "id": "romanhan.bar"
+    "position": "top"
   },
+  "cloneSourceRestores": [
+    "romanhan.media"
+  ],
   "idle": {
     "lock": 300,
     "screensaver": 150
@@ -80,8 +86,5 @@
   "version": 1,
   "disabledPlugins": [
     "omarchy.media"
-  ],
-  "cloneSourceRestores": [
-    "romanhan.media"
   ]
 }

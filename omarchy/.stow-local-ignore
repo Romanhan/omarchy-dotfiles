@@ -1,0 +1,4 @@
+# shell.json is rewritten by the Omarchy shell with atomicWrites, which
+# replaces the file; a stow symlink would break on the first bar edit.
+# Snapshot it into the repo with install-scripts/sync-shell-json instead.
+^/\.config/omarchy/shell\.json$

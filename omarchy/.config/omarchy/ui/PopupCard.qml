@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Hyprland
 import qs.Commons
 
+import qs.Commons as Commons
 PopupWindow {
   id: root
 
@@ -13,7 +14,7 @@ PopupWindow {
   property int padding: Style.spacing.popupPadding
   property int contentWidth: Style.space(280)
   property int contentHeight: Style.space(200)
-  property color borderColor: Color.popups.border
+  property color borderColor: Commons.Color.popups.border
   property real _grow: 0
   readonly property string barPos: root.bar ? root.bar.position : "top"
   property bool open: false
@@ -196,7 +197,7 @@ PopupWindow {
     Rectangle {
       anchors.fill: parent
       clip: true
-      color: Color.popups.background
+      color: Commons.Color.popups.background
       topLeftRadius: (root.barPos === "top" || root.barPos === "left") ? 0 : Style.cornerRadius
       topRightRadius: (root.barPos === "top" || root.barPos === "right") ? 0 : Style.cornerRadius
       bottomLeftRadius: (root.barPos === "bottom" || root.barPos === "left") ? 0 : Style.cornerRadius
