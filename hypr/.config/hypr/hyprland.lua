@@ -3,6 +3,11 @@
 -- Omarchy's bootstrap keeps path setup out of this user config.
 dofile((os.getenv("OMARCHY_PATH") or "/usr/share/omarchy") .. "/default/hypr/bootstrap.lua")
 
+-- Disable Omarchy's startup-cursor dance: r6807 sets XCURSOR_THEME=omarchy-startup
+-- (a theme with no index.theme), which makes Hyprland 0.56.2-4 SEGV in
+-- setCursorFromName right after start. Remove once upstream fixes it.
+omarchy_startup_cursor_pending = false
+
 -- Disable all Omarchy default bindings. Add your own in hypr/bindings.lua.
 -- omarchy_default_bindings = false
 --
