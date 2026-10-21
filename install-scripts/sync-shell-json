@@ -1,0 +1,31 @@
+#!/bin/sh
+# Keep the repo snapshot and the live shell config in sync.
+#
+# ~/.config/omarchy/shell.json cannot be stowed as a symlink: the Omarchy
+# shell rewrites it with atomicWrites (a QSaveFile commit replaces the file),
+# so the link would become a regular file on the first bar edit. The live file
+# is authoritative; the repo copy is a snapshot.
+#
+#   sync-shell-json           live -> repo snapshot (after changing the bar)
+#   sync-shell-json --push    repo snapshot -> live (fresh install)
+set -eu
+
+repo=$(cd -- "$(dirname -- "$0")/.." && pwd)
+snapshot="$repo/omarchy/.config/omarchy/shell.json"
+live="$HOME/.config/omarchy/shell.json"
+
+case "${1:-}" in
+  "")
+    cp "$live" "$snapshot"
+    chmod 0644 "$snapshot"
+    echo "Updated $snapshot"
+    ;;
+  --push)
+    install -m 0600 "$snapshot" "$live"
+    echo "Installed $live from the repo snapshot"
+    ;;
+  *)
+    echo "Usage: $(basename "$0") [--push]" >&2
+    exit 2
+    ;;
+esac

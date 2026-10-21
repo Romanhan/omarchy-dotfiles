@@ -1,0 +1,19 @@
+#!/bin/sh
+# Keep hypr/monitors.lua stowed after Omarchy rewrites it.
+#
+# omarchy-hyprland-monitor-scaling persists the scale with `sed -i`, which
+# replaces the stow symlink with a regular file. Copy the live file back into
+# the repo and restore the symlink. Safe to run when nothing has changed.
+set -eu
+
+repo=$(cd -- "$(dirname -- "$0")/.." && pwd)
+live="$HOME/.config/hypr/monitors.lua"
+source_file="$repo/hypr/.config/hypr/monitors.lua"
+
+[ -e "$live" ] || exit 0
+[ -L "$live" ] && exit 0
+
+cp "$live" "$source_file"
+rm -f "$live"
+cd "$repo"
+stow hypr

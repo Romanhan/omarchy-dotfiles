@@ -1,0 +1,30 @@
+#!/bin/sh
+# Clone the upstream themes that are too large to keep in this repo.
+#
+# Their working copies live under the stowed themes directory; .gitignore
+# excludes them so the dotfiles repo stays small. Existing checkouts are left
+# alone, so this is safe to rerun after setup.
+set -eu
+
+repo=$(cd -- "$(dirname -- "$0")/.." && pwd)
+themes="$repo/omarchy/.config/omarchy/themes"
+
+clone_theme() {
+  name=$1
+  url=$2
+
+  if [ -d "$themes/$name" ]; then
+    echo "$name already present, skipping"
+    return 0
+  fi
+
+  echo "Cloning $name..."
+  if ! git clone --depth 1 "$url" "$themes/$name"; then
+    echo "Warning: could not clone $name; skipping." >&2
+    rm -rf "$themes/$name"
+  fi
+}
+
+clone_theme blackgold  https://github.com/HANCORE-linux/omarchy-blackgold-theme.git
+clone_theme harbordark https://github.com/HANCORE-linux/omarchy-harbordark-theme.git
+clone_theme dracula    https://github.com/catlee/omarchy-dracula-theme

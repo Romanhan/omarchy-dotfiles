@@ -1,39 +1,33 @@
 #!/bin/bash
+# Stow this checkout into ~/.config. Run from anywhere; the repo is resolved
+# from this script, not from a hardcoded ~/dotfiles path.
+set -euo pipefail
 
-ORIGINAL_DIR=$(pwd)
-REPO_URL="https://github.com/romanhan/omarchy-dotfiles"
-REPO_NAME="dotfiles"
+DOTFILES_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$DOTFILES_DIR"
 
-is_stow_installed() {
-  pacman -Qi "stow" &> /dev/null
-}
+# stow is the only thing this script needs; omarchy pkg skips it when present.
+omarchy pkg add stow
 
-if ! is_stow_installed; then
-  echo "Install stow first"
-  exit 1
+STOW_PACKAGES=(bash kitty hypr superfile omarchy vscode)
+
+# The scaling shortcut replaces the monitors.lua symlink with a regular file.
+# Fold its content back into the repo first so stow does not hit a conflict.
+"$DOTFILES_DIR/install-scripts/sync-monitors"
+
+for package in "${STOW_PACKAGES[@]}"; do
+  if [ -d "$package" ]; then
+    echo "Stowing $package..."
+    stow --restow "$package"
+  else
+    echo "Warning: $package not found, skipping"
+  fi
+done
+
+# shell.json is excluded from stow. Seed the repo snapshot on a fresh machine,
+# or when the live file is still Omarchy's untouched default.
+live="$HOME/.config/omarchy/shell.json"
+stock="/usr/share/omarchy/config/omarchy/shell.json"
+if [ ! -e "$live" ] || { [ -f "$stock" ] && cmp -s "$live" "$stock"; }; then
+  "$DOTFILES_DIR/install-scripts/sync-shell-json" --push
 fi
-
-cd ~
-
-# Check if the repository already exists
-if [ -d "$REPO_NAME" ]; then
-  echo "Repository '$REPO_NAME' already exists. Skipping clone"
-else
-  git clone "$REPO_URL"
-fi
-
-# Check if the clone was successful
-if [ $? -eq 0 ]; then
-  
-  cd "$REPO_NAME"
-  stow bash
-  stow kitty
-  stow waybar
-  stow vscode
-  stow scripts
-else
-  echo "Failed to clone the repository."
-  exit 1
-fi
-
-cd "$ORIGINAL_DIR"

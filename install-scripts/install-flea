@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# pacman -Q does prefix matching ("flea" also matches "flea-bin"), so test
+# the exact package name from the installed list instead.
+is_installed() {
+  pacman -Qq | grep -Fxq "$1"
+}
+
+# flea ships in Omarchy's own repo. Older installs used the AUR flea-bin
+# package, which owns the same binary, so replace it to avoid a file conflict.
+if is_installed flea-bin && ! is_installed flea; then
+  omarchy pkg drop flea-bin || exit 1
+fi
+
+omarchy pkg add flea
