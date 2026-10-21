@@ -1,2 +1,7 @@
 # Editor/tool backup files (e.g. config.toml.bak.20261014-112218)
 *.bak.*
+
+# Large upstream theme clones, installed by install-scripts/install-themes.
+omarchy/.config/omarchy/themes/blackgold/
+omarchy/.config/omarchy/themes/harbordark/
+omarchy/.config/omarchy/themes/dracula/
