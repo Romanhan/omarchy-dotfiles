@@ -2,43 +2,75 @@
 
 set -euo pipefail
 
-PLUGIN_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+BAR_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+TRAY_DIR="$BAR_DIR/../romanhan.tray"
 OMARCHY_DIR=${OMARCHY_PATH:-/usr/share/omarchy}
 STOCK_DIR="$OMARCHY_DIR/shell/plugins/bar"
 
-if [[ ! -r "$STOCK_DIR/Bar.qml" || ! -r "$STOCK_DIR/BarModel.js" ]]; then
-  echo "Cannot read the stock Omarchy bar in $STOCK_DIR" >&2
-  exit 1
-fi
+for file in "$STOCK_DIR/Bar.qml" "$STOCK_DIR/BarModel.js" \
+            "$STOCK_DIR/widgets/Tray.qml" "$STOCK_DIR/widgets/TrayModel.js"; do
+  if [[ ! -r "$file" ]]; then
+    echo "Cannot read stock Omarchy file: $file" >&2
+    exit 1
+  fi
+done
 
-if [[ ! -r "$PLUGIN_DIR/island.patch" ]]; then
-  echo "Cannot read $PLUGIN_DIR/island.patch" >&2
-  exit 1
-fi
+for patch_file in "$BAR_DIR/island.patch" "$TRAY_DIR/tray.patch"; do
+  if [[ ! -r "$patch_file" ]]; then
+    echo "Cannot read patch: $patch_file" >&2
+    exit 1
+  fi
+done
 
 BUILD_DIR=$(mktemp -d "${TMPDIR:-/tmp}/romanhan-bar.XXXXXX")
 trap 'rm -rf -- "$BUILD_DIR"' EXIT
 
-cp -- "$STOCK_DIR/Bar.qml" "$BUILD_DIR/Bar.qml"
-for patch_file in "$PLUGIN_DIR"/*.patch; do
-  patch --batch --forward --silent -p1 -d "$BUILD_DIR" < "$patch_file"
+changed=()
+pending_sources=()
+pending_destinations=()
+
+render_patched() {
+  local name=$1 stock=$2 patch_file=$3 destination=$4
+  local build="$BUILD_DIR/$name"
+
+  cp -- "$stock" "$build"
+  if ! patch --batch --forward --silent -p1 -d "$BUILD_DIR" < "$patch_file"; then
+    echo "Patch $(basename "$patch_file") no longer applies to $name; existing files left untouched." >&2
+    return 1
+  fi
+
+  if ! cmp -s -- "$build" "$destination"; then
+    changed+=("$name")
+    pending_sources+=("$build")
+    pending_destinations+=("$destination")
+  fi
+}
+
+sync_stock() {
+  local name=$1 stock=$2 destination=$3
+  if ! cmp -s -- "$stock" "$destination"; then
+    changed+=("$name")
+    pending_sources+=("$stock")
+    pending_destinations+=("$destination")
+  fi
+}
+
+if ! render_patched "Bar.qml" "$STOCK_DIR/Bar.qml" "$BAR_DIR/island.patch" "$BAR_DIR/Bar.qml"; then
+  exit 1
+fi
+sync_stock "BarModel.js" "$STOCK_DIR/BarModel.js" "$BAR_DIR/BarModel.js"
+
+if ! render_patched "Tray.qml" "$STOCK_DIR/widgets/Tray.qml" "$TRAY_DIR/tray.patch" "$TRAY_DIR/Tray.qml"; then
+  exit 1
+fi
+sync_stock "TrayModel.js" "$STOCK_DIR/widgets/TrayModel.js" "$TRAY_DIR/TrayModel.js"
+
+for i in "${!pending_sources[@]}"; do
+  install -m 0644 -- "${pending_sources[$i]}" "${pending_destinations[$i]}"
 done
 
-bar_changed=false
-model_changed=false
-cmp -s "$BUILD_DIR/Bar.qml" "$PLUGIN_DIR/Bar.qml" || bar_changed=true
-cmp -s "$STOCK_DIR/BarModel.js" "$PLUGIN_DIR/BarModel.js" || model_changed=true
-
-if [[ "$bar_changed" == false && "$model_changed" == false ]]; then
-  echo "romanhan.bar is already based on the current Omarchy bar"
-  exit 0
+if [[ ${#changed[@]} -eq 0 ]]; then
+  echo "romanhan.bar and romanhan.tray are already based on the current Omarchy bar"
+else
+  echo "Rebuilt ${changed[*]} from the current Omarchy bar"
 fi
-
-if [[ "$bar_changed" == true ]]; then
-  install -m 0644 "$BUILD_DIR/Bar.qml" "$PLUGIN_DIR/Bar.qml"
-fi
-if [[ "$model_changed" == true ]]; then
-  install -m 0644 "$STOCK_DIR/BarModel.js" "$PLUGIN_DIR/BarModel.js"
-fi
-
-echo "Rebuilt romanhan.bar from the current Omarchy bar"

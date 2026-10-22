@@ -32,9 +32,11 @@ Finish with `omarchy restart shell`.
   `install-scripts/sync-monitors` afterwards, which copies the live file back
   into the repo and swaps in the symlink with one atomic rename.
 - **Dynamic island bar** is generated from the installed stock bar plus
-  `island.patch`. After an Omarchy update run
+  `island.patch`; the tray is generated from stock `Tray.qml` plus
+  `tray.patch`. After an Omarchy update run
   `omarchy/.config/omarchy/plugins/romanhan.bar/rebuild` (the post-update hook
-  does this automatically for `omarchy update`).
+  does this automatically for `omarchy update`). If a patch no longer applies,
+  rebuild leaves the existing bar and tray untouched.
 - **Large upstream themes** (`blackgold`, `harbordark`, `dracula`) are cloned
   by `install-scripts/install-themes` and ignored by git. The small custom
   themes (`aether`, `redbull`) are tracked.

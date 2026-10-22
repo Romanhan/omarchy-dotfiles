@@ -1,0 +1,35 @@
+--- a/Tray.qml
++++ b/Tray.qml
+@@ -12,7 +12,9 @@
+   id: root
+   moduleName: "omarchy.tray"
+ 
+-  property bool expanded: false
++  // The dynamic island owns disclosure. The tray follows the island instead
++  // of presenting a second, competing chevron and hover state.
++  readonly property bool expanded: bar ? bar.islandRevealed === true : false
+   property bool managePopupOpen: false
+   property bool trayMenuOpen: false
+   property var activeTrayItem: null
+@@ -282,10 +284,6 @@
+         height: root.barSize
+         visible: root.hasDrawer
+ 
+-        HoverHandler {
+-          onHoveredChanged: root.expanded = hovered
+-        }
+-
+         BarIconButton {
+           id: expandIcon
+           bar: root.bar
+@@ -372,10 +370,6 @@
+         height: verticalTrayRoot.chevronHeight + root.revealExtent
+         visible: root.hasDrawer
+ 
+-        HoverHandler {
+-          onHoveredChanged: root.expanded = hovered
+-        }
+-
+         BarIconButton {
+           id: expandIcon
+           bar: root.bar

@@ -8,7 +8,7 @@ if output=$($REBUILD 2>&1); then
   fi
 else
   notify-send -u critical "Dynamic island needs attention" \
-    "The island patch no longer applies to this Omarchy version. Your existing bar was left untouched."
+    "The bar or tray patch no longer applies to this Omarchy version. Your existing bar and tray were left untouched."
 fi
 
 exit 0
