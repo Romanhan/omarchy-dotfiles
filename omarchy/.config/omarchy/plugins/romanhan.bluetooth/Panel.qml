@@ -7,7 +7,6 @@ import Quickshell.Services.Pipewire
 import qs.Ui
 import "../../ui"
 import qs.Commons
-
 import qs.Commons as Commons
 import "Model.js" as Model
 
@@ -67,19 +66,19 @@ Panel {
 
   property int phraseIndex: 0
   readonly property var activePhrases: [
-    "Untangling wires",
-    "Streaming vikings",
-    "Pairing mysteries",
-    "Herding headsets",
-    "Taming radios",
-    "Summoning speakers",
-    "Wrangling codecs",
-    "Polishing packets"
+    Commons.I18n.t("bluetooth.phrase1"),
+    Commons.I18n.t("bluetooth.phrase2"),
+    Commons.I18n.t("bluetooth.phrase3"),
+    Commons.I18n.t("bluetooth.phrase4"),
+    Commons.I18n.t("bluetooth.phrase5"),
+    Commons.I18n.t("bluetooth.phrase6"),
+    Commons.I18n.t("bluetooth.phrase7"),
+    Commons.I18n.t("bluetooth.phrase8")
   ]
   readonly property bool rotatingPhrases: adapter && adapter.enabled
   readonly property string heroStatusText: {
-    if (!adapter) return "No adapter"
-    if (!adapter.enabled) return "Turned Off"
+    if (!adapter) return Commons.I18n.t("bluetooth.noAdapter")
+    if (!adapter.enabled) return Commons.I18n.t("bluetooth.turnedOff")
     return activePhrases[phraseIndex % activePhrases.length]
   }
 
@@ -104,7 +103,7 @@ Panel {
   // sits above the device sections so the adapter can be toggled by keyboard
   // even when it is off and no device rows exist.
   readonly property bool headerHasCursor: cursorActive && focusSection === "header"
-  readonly property string toggleHint: root.adapter && root.adapter.enabled ? "Turn Bluetooth off" : "Turn Bluetooth on"
+  readonly property string toggleHint: root.adapter && root.adapter.enabled ? Commons.I18n.t("bluetooth.turnOff") : Commons.I18n.t("bluetooth.turnOn")
 
   readonly property color hoverFill: bar
     ? Style.hoverFillFor(bar.foreground, Commons.Color.accent)
@@ -186,7 +185,7 @@ Panel {
     var rows = scrollRows
     if (index < 0 || index >= rows.length) return ""
     if (index > 0 && rows[index - 1].section === rows[index].section) return ""
-    return rows[index].section === "known" ? "PAIRED" : "AVAILABLE"
+    return rows[index].section === "known" ? Commons.I18n.t("bluetooth.paired") : Commons.I18n.t("bluetooth.available")
   }
 
   function audioSinks() {
@@ -606,14 +605,14 @@ Panel {
     id: phraseSwap
     PropertyAnimation {
       target: heroStatus; property: "opacity"
-      to: 0.0; duration: 180; easing.type: Easing.OutQuad
+      to: 0.0; duration: Style.duration(180); easing.type: Easing.OutQuad
     }
     ScriptAction {
       script: root.phraseIndex = (root.phraseIndex + 1) % root.activePhrases.length
     }
     PropertyAnimation {
       target: heroStatus; property: "opacity"
-      to: 1.0; duration: 260; easing.type: Easing.InQuad
+      to: 1.0; duration: Style.duration(260); easing.type: Easing.InQuad
     }
   }
 
@@ -622,7 +621,7 @@ Panel {
     function onRotatingPhrasesChanged() {
       if (!root.rotatingPhrases) {
         phraseSwap.stop()
-        heroStatus.opacity = 1.0
+        if (heroStatus) heroStatus.opacity = 1.0
       }
     }
   }
@@ -640,7 +639,7 @@ Panel {
     Quickshell.execDetached(["omarchy-bluetooth-power", adapter.enabled ? "off" : "on"])
   }
 
-  IpcHandler {
+  ShellIpc {
     target: "omarchy.bluetooth"
 
     function open() { root.open() }
@@ -701,6 +700,7 @@ Panel {
           // Status only — the switch owns toggling, mouse and keyboard alike.
           Text {
             id: heroIcon
+            textFormat: Text.PlainText
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: root.icon
@@ -740,7 +740,8 @@ Panel {
             spacing: Style.space(2)
 
             Text {
-              text: "Bluetooth"
+              text: Commons.I18n.t("bluetooth.title")
+              textFormat: Text.PlainText
               color: root.bar.foreground
               font.family: root.bar.fontFamily
               font.pixelSize: Style.font.title
@@ -751,6 +752,7 @@ Panel {
 
             Text {
               id: heroStatus
+              textFormat: Text.PlainText
               text: root.heroStatusText.toUpperCase()
               color: Qt.darker(root.bar.foreground, 1.4)
               font.family: root.bar.fontFamily
@@ -776,7 +778,7 @@ Panel {
           spacing: Style.space(10)
 
           PanelSectionHeader {
-            text: "CONNECTED"
+            text: Commons.I18n.t("bluetooth.connected")
             foreground: root.bar.foreground
             fontFamily: root.bar.fontFamily
           }
@@ -866,10 +868,11 @@ Panel {
         }
 
         Text {
+          textFormat: Text.PlainText
           visible: root.connectedDevices.length === 0 && root.scrollRows.length === 0
-          text: !root.adapter ? "No Bluetooth adapter"
-              : !root.adapter.enabled ? "Turn Bluetooth on to scan"
-              : "Scanning for devices…"
+          text: !root.adapter ? Commons.I18n.t("bluetooth.noBluetoothAdapter")
+              : !root.adapter.enabled ? Commons.I18n.t("bluetooth.turnOnToScan")
+              : Commons.I18n.t("bluetooth.scanning")
           color: Qt.darker(root.bar.foreground, 1.5)
           font.family: root.bar.fontFamily
           font.pixelSize: Style.font.bodySmall
@@ -894,9 +897,9 @@ Panel {
     readonly property string action: root.pendingAction(dev ? dev.address : "")
     readonly property string actionTooltip: {
       if (!dev) return ""
-      if (isConnected) return "Disconnect"
-      if (isDiscovered) return "Pair"
-      return "Connect"
+      if (isConnected) return Commons.I18n.t("bluetooth.disconnect")
+      if (isDiscovered) return Commons.I18n.t("bluetooth.pair")
+      return Commons.I18n.t("bluetooth.connect")
     }
 
     readonly property bool rowSelected: root.cursorActive && root.focusSection === sectionName && root.selectedIndex === rowIndex
@@ -911,13 +914,13 @@ Panel {
 
     readonly property string statusText: {
       if (!dev) return ""
-      if (action === "forgetting") return "Forgetting…"
-      if (action === "disconnecting" || devState === 2) return "Disconnecting…"
+      if (action === "forgetting") return Commons.I18n.t("bluetooth.forgetting")
+      if (action === "disconnecting" || devState === 2) return Commons.I18n.t("bluetooth.disconnecting")
       if (isConnected) {
-        if (dev.batteryAvailable) return Math.round(dev.battery * 100) + "%"
-        return sectionName === "connected" ? "" : "Connected"
+        if (dev.batteryAvailable) return Commons.I18n.formatNumber(Math.round(dev.battery * 100)) + "%"
+        return sectionName === "connected" ? "" : Commons.I18n.t("bluetooth.connectedStatus")
       }
-      if (action === "connecting" || devState === 3 || dev.pairing === true) return "Connecting…"
+      if (action === "connecting" || devState === 3 || dev.pairing === true) return Commons.I18n.t("bluetooth.connecting")
       if (isDiscovered) return ""
       return ""
     }
@@ -974,6 +977,7 @@ Panel {
 
       Text {
         id: deviceIcon
+        textFormat: Text.PlainText
         text: row.isConnected ? "󰂱" : "󰂯"
         color: row.statusColor
         font.family: root.bar.fontFamily
@@ -992,7 +996,8 @@ Panel {
         anchors.verticalCenter: parent.verticalCenter
 
         Text {
-          text: root.deviceLabel(row.dev) || "Device"
+          textFormat: Text.PlainText
+          text: root.deviceLabel(row.dev) || Commons.I18n.t("bluetooth.device")
           color: root.bar.foreground
           font.family: root.bar.fontFamily
           font.pixelSize: Style.font.body
@@ -1000,6 +1005,7 @@ Panel {
           width: parent.width
         }
         Text {
+          textFormat: Text.PlainText
           visible: row.statusText !== ""
           text: row.statusText
           color: row.statusColor
@@ -1016,7 +1022,7 @@ Panel {
         anchors.verticalCenter: parent.verticalCenter
         visible: row.showForgetButton
         iconText: "󰅙"
-        tooltipText: "Forget"
+        tooltipText: Commons.I18n.t("bluetooth.forget")
         foreground: root.bar.foreground
         hoverColor: root.bar.foreground
         fontFamily: root.bar.fontFamily
