@@ -158,7 +158,7 @@ Panel {
   // Re-resolve whenever the selected output changes, and when nodes or links
   // come and go: a tuning being applied or removed underneath us, or a DSP sink
   // rerouted to another output, shows up as exactly that.
-  onSinkChanged: resolveVolumeSink()
+  onSinkChanged: Qt.callLater(root.resolveVolumeSink)
   onNodesChanged: volumeSinkResolveTimer.restart()
 
   Connections {
