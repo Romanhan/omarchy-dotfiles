@@ -12,4 +12,20 @@ if is_installed flea-bin && ! is_installed flea; then
   omarchy pkg drop flea-bin || exit 1
 fi
 
-omarchy pkg add flea
+omarchy pkg add flea || exit 1
+
+flea_desktop="com.thisisgm.flea.desktop"
+current_default=$(xdg-mime query default inode/directory 2>/dev/null || true)
+
+if [ "$current_default" != "$flea_desktop" ]; then
+  echo "Setting Flea as the default file manager..."
+  # This also writes Flea's Hyprland keybinding block. setup.sh runs the app
+  # installers before install-dotfiles, so the repo bindings are linked over it
+  # afterwards.
+  flea --default || true
+fi
+
+if [ "$(xdg-mime query default inode/directory 2>/dev/null || true)" != "$flea_desktop" ]; then
+  echo "Error: Flea is installed but is not the default file manager." >&2
+  exit 1
+fi

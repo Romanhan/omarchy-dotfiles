@@ -1,0 +1,56 @@
+#!/bin/bash
+# Install every application script and report which ones failed.
+#
+# Each app stays in its own install-scripts/install-* file. This master script
+# intentionally uses an explicit list so it never runs install-dotfiles (which
+# setup.sh calls after the app installers) or itself.
+set -u
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPTS=(
+  install-brave
+  install-flea
+  install-kitty
+  install-superfile
+  install-code-oss
+  install-stow
+  install-themes
+  install-trash-cli
+)
+
+failed=()
+installed=()
+
+for name in "${SCRIPTS[@]}"; do
+  script="$SCRIPT_DIR/$name"
+
+  if [ ! -x "$script" ]; then
+    echo "=== $name ==="
+    echo "  FAILED: missing or not executable: $script"
+    failed+=("$name")
+    continue
+  fi
+
+  echo "=== $name ==="
+  if "$script"; then
+    installed+=("$name")
+  else
+    status=$?
+    echo "  FAILED: $name exited with status $status"
+    failed+=("$name")
+  fi
+done
+
+echo
+echo "=== App install summary ==="
+if [ ${#installed[@]} -gt 0 ]; then
+  printf '  ok:     %s\n' "${installed[*]}"
+fi
+if [ ${#failed[@]} -gt 0 ]; then
+  printf '  failed: %s\n' "${failed[*]}"
+  echo
+  echo "Re-run a failed script individually from $SCRIPT_DIR."
+  exit 1
+fi
+
+echo "  all app installers completed"

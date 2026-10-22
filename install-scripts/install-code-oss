@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# Arch's `code` package is the Open Source build (Code - OSS). It is not the
+# proprietary visual-studio-code-bin package that Omarchy's editor installer
+# pulls in, and it keeps its settings under "Code - OSS", not "Code".
+is_installed() {
+  pacman -Qq | grep -Fxq "$1"
+}
+
+if is_installed visual-studio-code-bin; then
+  omarchy pkg drop visual-studio-code-bin || exit 1
+fi
+
+omarchy pkg add code || exit 1
+
+if ! command -v code-oss >/dev/null 2>&1; then
+  echo "Error: code-oss is not available after installing the code package." >&2
+  exit 1
+fi

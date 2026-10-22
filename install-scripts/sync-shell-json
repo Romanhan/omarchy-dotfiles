@@ -21,7 +21,15 @@ case "${1:-}" in
     echo "Updated $snapshot"
     ;;
   --push)
-    install -m 0600 "$snapshot" "$live"
+    mkdir -p "$(dirname -- "$live")"
+    # Replace atomically too: the running shell watches this file, and a
+    # truncate-and-write could make it parse a partial JSON document.
+    tmp=$(mktemp "$live.XXXXXX")
+    trap 'rm -f -- "$tmp"' EXIT
+    cp "$snapshot" "$tmp"
+    chmod 0600 "$tmp"
+    mv -fT "$tmp" "$live"
+    trap - EXIT
     echo "Installed $live from the repo snapshot"
     ;;
   *)

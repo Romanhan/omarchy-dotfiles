@@ -1,0 +1,2 @@
+#!/bin/sh
+omarchy pkg add superfile

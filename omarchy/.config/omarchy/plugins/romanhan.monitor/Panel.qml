@@ -314,9 +314,7 @@ Panel {
   }
 
   function setScale(scale) {
-    // The scaling script persists with sed -i, replacing the stowed
-    // monitors.lua symlink; restore it afterwards.
-    actionProc.command = ["bash", "-c", "omarchy-hyprland-monitor-scaling " + scale + " && \"$HOME/dotfiles/install-scripts/sync-monitors\""]
+    actionProc.command = ["bash", "-c", "omarchy-hyprland-monitor-scaling " + scale]
     if (!actionProc.running) actionProc.running = true
   }
 

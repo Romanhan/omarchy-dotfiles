@@ -1,36 +1,132 @@
 #!/bin/bash
-# Stow this checkout into ~/.config. Run from anywhere; the repo is resolved
-# from this script, not from a hardcoded ~/dotfiles path.
+# Link this checkout into ~/.config without destroying existing files.
+#
+# Omarchy seeds a new home from /etc/skel, so a fresh machine already has
+# regular ~/.bashrc, hypr, kitty, and omarchy files. Stow refuses to replace
+# those. Instead, copy each conflicting file into a timestamped backup and
+# swap in the symlink with a single rename, so Hyprland never sees a missing
+# config file.
 set -euo pipefail
 
 DOTFILES_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$DOTFILES_DIR"
+TARGET="$HOME"
+BACKUP_DIR="$HOME/.local/state/dotfiles/backups/$(date +%Y%m%d-%H%M%S)"
+backup_used=false
 
-# stow is the only thing this script needs; omarchy pkg skips it when present.
-omarchy pkg add stow
+PACKAGES=(bash kitty hypr superfile omarchy code-oss)
 
-STOW_PACKAGES=(bash kitty hypr superfile omarchy vscode)
+skip_path() {
+  case "$1" in
+    .stow-local-ignore | .config/omarchy/shell.json) return 0 ;;
+  esac
+  return 1
+}
 
-# The scaling shortcut replaces the monitors.lua symlink with a regular file.
-# Fold its content back into the repo first so stow does not hit a conflict.
-"$DOTFILES_DIR/install-scripts/sync-monitors"
+backup_file() {
+  local target=$1 rel=$2
+  mkdir -p -- "$BACKUP_DIR/$(dirname -- "$rel")"
+  cp -a -- "$target" "$BACKUP_DIR/$rel"
+  backup_used=true
+  echo "  backed up $rel"
+}
 
-for package in "${STOW_PACKAGES[@]}"; do
-  if [ -d "$package" ]; then
-    echo "Stowing $package..."
-    # Plain stow is idempotent and, unlike --restow, never unlinks a correct
-    # symlink first. Hyprland and the shell watch these paths and would see a
-    # missing monitors.lua/shell file during the gap.
-    stow "$package"
-  else
-    echo "Warning: $package not found, skipping"
+link_file() {
+  local package=$1 source=$2
+  local rel="${source#"$DOTFILES_DIR/$package/"}"
+  local target="$TARGET/$rel"
+
+  if skip_path "$rel"; then
+    return 0
   fi
+
+  # Already a symlink to this exact repo file: nothing to do.
+  if [ -L "$target" ]; then
+    local current
+    current="$(readlink -f -- "$target" 2>/dev/null || true)"
+    if [ "$current" = "$(readlink -f -- "$source")" ]; then
+      return 0
+    fi
+  fi
+
+  # A symlinked parent (for example a hand-linked themes directory) already
+  # resolves this path into the repo; leave it alone instead of linking inside
+  # the repo.
+  local target_real
+  target_real="$(realpath -m -- "$target")"
+  case "$target_real" in
+    "$DOTFILES_DIR"/*) return 0 ;;
+  esac
+
+  mkdir -p -- "$(dirname -- "$target")"
+
+  if [ -e "$target" ] || [ -L "$target" ]; then
+    if [ -d "$target" ] && [ ! -L "$target" ]; then
+      # A directory where a file is expected: move it aside whole.
+      mkdir -p -- "$BACKUP_DIR/$(dirname -- "$rel")"
+      mv -- "$target" "$BACKUP_DIR/$rel"
+      backup_used=true
+      echo "  backed up directory $rel"
+    else
+      backup_file "$target" "$rel"
+    fi
+  fi
+
+  local link tmp
+  link="$(realpath --relative-to="$(dirname -- "$target")" -- "$source")"
+  tmp="$target.tmp.$$"
+  ln -s -- "$link" "$tmp"
+  mv -T -- "$tmp" "$target"
+}
+
+for package in "${PACKAGES[@]}"; do
+  if [ ! -d "$DOTFILES_DIR/$package" ]; then
+    echo "Warning: $package not found, skipping"
+    continue
+  fi
+
+  echo "Linking $package..."
+
+  # Skip nested git directories and editor backups. find -print0 keeps paths
+  # with spaces (Code - OSS) intact.
+  while IFS= read -r -d '' source; do
+    link_file "$package" "$source"
+  done < <(
+    find "$DOTFILES_DIR/$package" \
+      -name .git -prune -o \
+      -name '*.bak.*' -prune -o \
+      \( -type f -o -type l \) -print0
+  )
 done
 
-# shell.json is excluded from stow. Seed the repo snapshot on a fresh machine,
-# or when the live file is still Omarchy's untouched default.
-live="$HOME/.config/omarchy/shell.json"
-stock="/usr/share/omarchy/config/omarchy/shell.json"
-if [ ! -e "$live" ] || { [ -f "$stock" ] && cmp -s "$live" "$stock"; }; then
+# The old proprietary-VS-Code settings symlink points at the removed repo path.
+old_code_settings="$HOME/.config/Code/User/settings.json"
+if [ -L "$old_code_settings" ] && [ ! -e "$old_code_settings" ]; then
+  rm -f -- "$old_code_settings"
+  echo "Removed stale Code settings symlink at $old_code_settings"
+fi
+
+# shell.json is excluded from linking because the shell rewrites it atomically.
+# Seed the repo snapshot when the live file is missing, still stock, or has no
+# custom bar.
+live_shell="$HOME/.config/omarchy/shell.json"
+stock_shell="/usr/share/omarchy/config/omarchy/shell.json"
+seed_shell=false
+
+# Only seed a missing or still-stock file. Any live file that differs from
+# stock is the user's canonical config and must not be overwritten.
+if [ ! -e "$live_shell" ]; then
+  seed_shell=true
+elif [ -f "$stock_shell" ] && cmp -s "$live_shell" "$stock_shell"; then
+  seed_shell=true
+fi
+
+if $seed_shell; then
   "$DOTFILES_DIR/install-scripts/sync-shell-json" --push
 fi
+
+if $backup_used; then
+  echo "Existing files were backed up to $BACKUP_DIR"
+fi
+
+# Make Hyprland pick up the linked files and clear any transient error state.
+hyprctl reload >/dev/null 2>&1 || true
