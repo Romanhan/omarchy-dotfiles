@@ -220,7 +220,7 @@ Panel {
     })
   }
 
-  IpcHandler {
+  ShellIpc {
     target: "omarchy.monitor"
 
     function brightness(percent: string): string { return root.brightnessIpc(percent) }
@@ -290,7 +290,7 @@ Panel {
   // span ~10–20 points so casual tweaks change the label, while small
   // nudges within one band don't.
   function brightnessName(percent) {
-    return Model.brightnessName(percent)
+    return Model.brightnessName(percent, Commons.I18n.t)
   }
 
   function updateDisplays(displaysJson) {
@@ -306,17 +306,17 @@ Panel {
     // hyprctl keyword is rejected under the Lua config ("non-legacy parsers"),
     // so drive the monitor through the hl.monitor eval API instead.
     var output = '"' + name.replace(/[\\"]/g, "\\$&") + '"'
+    // hl.monitor updates the existing rule. Keep its mode, position and scale
+    // when bringing the display back.
     var expr = enabled
       ? 'hl.monitor({ output = ' + output + ', disabled = true })'
-      : 'hl.monitor({ output = ' + output + ', disabled = false, mode = "preferred", position = "auto", scale = "auto" })'
+      : 'hl.monitor({ output = ' + output + ', disabled = false })'
     actionProc.command = ["hyprctl", "eval", expr]
     if (!actionProc.running) actionProc.running = true
   }
 
   function setScale(scale) {
-    // The scaling script persists with sed -i, replacing the stowed
-    // monitors.lua symlink; restore it afterwards.
-    actionProc.command = ["bash", "-c", "omarchy-hyprland-monitor-scaling " + scale + " && \"$HOME/dotfiles/install-scripts/sync-monitors\""]
+    actionProc.command = ["bash", "-c", "omarchy-hyprland-monitor-scaling " + scale]
     if (!actionProc.running) actionProc.running = true
   }
 
