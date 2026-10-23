@@ -34,7 +34,7 @@ render_patched() {
   local build="$BUILD_DIR/$name"
 
   cp -- "$stock" "$build"
-  if ! patch --batch --forward --silent -p1 -d "$BUILD_DIR" < "$patch_file"; then
+  if ! patch --batch --forward --silent --fuzz=0 -p1 -d "$BUILD_DIR" < "$patch_file"; then
     echo "Patch $(basename "$patch_file") no longer applies to $name; existing files left untouched." >&2
     return 1
   fi
