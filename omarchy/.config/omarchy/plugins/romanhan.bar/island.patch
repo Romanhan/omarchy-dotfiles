@@ -109,7 +109,7 @@
  
    // Display cutouts (a camera notch) the platform's own package describes in
    // the fixed platform root, which no environment variable moves. Most machines
-@@ -1531,6 +1600,11 @@
+@@ -1534,6 +1603,11 @@
    component BarPanel: PanelWindow {
      id: barWindow
  
@@ -121,7 +121,7 @@
      // Hiding parks the bar just past its screen edge instead of unmapping it.
      // Unmapping frees the layer surface and the whole scene graph, so every
      // reveal has to rebuild them — new surface, re-shaped glyphs, re-uploaded
-@@ -1542,7 +1616,21 @@
+@@ -1545,7 +1619,21 @@
      // instead of growing once the windows are laid out. The wait ends once, for
      // good: when the mode settles it, or after two seconds without one.
      visible: !remapGuard.remapping && (cutoutWaitOver || !cutoutPending)
@@ -144,7 +144,7 @@
  
      ScreenMoveRemap {
        id: remapGuard
-@@ -1552,10 +1640,14 @@
+@@ -1555,10 +1643,14 @@
      // Parked by its full thickness, which a notch floor may make more than
      // barSize, so no strip of it stays on screen.
      margins {
@@ -163,8 +163,8 @@
      }
  
      anchors {
-@@ -1584,13 +1676,16 @@
-     readonly property int thickness: root.thicknessFor(screen)
+@@ -1591,13 +1683,16 @@
+     property real peekEdge: 0
  
      implicitWidth: root.vertical ? thickness : 0
 -    implicitHeight: root.vertical ? 0 : thickness
@@ -182,7 +182,7 @@
        anchors.fill: parent
        sourceComponent: root.vertical ? verticalBar : horizontalBar
  
-@@ -1609,7 +1704,7 @@
+@@ -1617,7 +1712,7 @@
        id: tooltipWindow
  
        visible: root.tooltipShown && root.tooltipTarget !== null && root.tooltipText !== "" && root.targetBelongsToWindow(root.tooltipTarget, barWindow)
@@ -191,7 +191,7 @@
        implicitWidth: Math.ceil(tooltipBubble.implicitWidth)
        implicitHeight: Math.ceil(tooltipBubble.implicitHeight)
  
-@@ -1673,48 +1768,133 @@
+@@ -1681,48 +1776,156 @@
        id: horizontalBar
  
        Item {
@@ -205,24 +205,6 @@
 -          window: barWindow
 -          pool: horizontalPool
 -          drawn: !barWindow.centerBesideRight
--        }
--
--        LeftModules {
--          window: barWindow
--          pool: horizontalPool
--          anchors.left: parent.left
--          anchors.leftMargin: Style.space(8)
--          anchors.verticalCenter: parent.verticalCenter
--        }
--
--        RightModules {
--          window: barWindow
--          pool: horizontalPool
--          id: rightModules
--          anchors.right: parent.right
--          anchors.rightMargin: Style.space(8)
--          anchors.verticalCenter: parent.verticalCenter
--        }
 +        // The horizontal island: a centered pill that animates its width as
 +        // hidden widgets are revealed. The content row fills the pill, with
 +        // flexible side padding that keeps the module group centered and
@@ -236,6 +218,40 @@
 +        readonly property real pillW: islandPill.width
 +        readonly property real pillH: islandPill.height
 +
++        // Where the center box ends on the pill. The pill's own hover handler
++        // opens the indicator peek only up to here, as the stock bar surface
++        // does (BarModel.peeksAt); past it, over the clock's trailing widgets
++        // and the right section, the peek stays shut.
++        readonly property real centerEnd: islandRow.x + islandCenter.x + islandCenter.width
++        // Held while the peek is open, so revealing the indicators, which
++        // widens the center box, cannot slide the edge out from under a
++        // stationary pointer and close it again (BarModel.nextPeekEdge).
++        property real peekEdge: 0
++        function syncPeekEdge() {
++          peekEdge = BarModel.nextPeekEdge(peekEdge, centerEnd, root.centerSectionRevealHeld)
+         }
++        onCenterEndChanged: syncPeekEdge()
++        Component.onCompleted: syncPeekEdge()
+ 
+-        LeftModules {
+-          window: barWindow
+-          pool: horizontalPool
+-          anchors.left: parent.left
+-          anchors.leftMargin: Style.space(8)
+-          anchors.verticalCenter: parent.verticalCenter
++        Connections {
++          target: root
++          function onCenterSectionRevealHeldChanged() { islandRoot.syncPeekEdge() }
+         }
+ 
+-        RightModules {
+-          window: barWindow
+-          pool: horizontalPool
+-          id: rightModules
+-          anchors.right: parent.right
+-          anchors.rightMargin: Style.space(8)
+-          anchors.verticalCenter: parent.verticalCenter
+-        }
 +        BorderSurface {
 +          id: islandPill
 +          objectName: "romanhanIslandPill"
@@ -251,12 +267,14 @@
 +          Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
 +
 +          // Hovering the pill holds the indicator peek open, the way the whole
-+          // bar's hover handler does on a stock bar.
++          // bar's hover handler does on a stock bar, but only up to the end of
++          // the center box: over the right section it stays shut.
 +          HoverHandler {
-+            onHoveredChanged: {
++            readonly property bool peeking: hovered && BarModel.peeksAt(point.position, islandRoot.peekEdge, false)
++            onPeekingChanged: {
 +              // The timer is already gone when the bar is torn down on a
 +              // scale or monitor change, but the hover handler can still fire.
-+              if (hovered) {
++              if (peeking) {
 +                if (root.centerSectionRevealTimer) root.centerSectionRevealTimer.stop()
 +                root.centerSectionRevealHeld = true
 +              } else if (root.centerSectionRevealTimer) {
@@ -324,6 +342,7 @@
 +              Layout.preferredWidth: implicitWidth
 +            }
 +            ModuleList {
++              id: islandCenter
 +              region: "center"
 +              keys: root.layoutWidgets.sections.center
 +              fixedEdge: "center"
@@ -362,7 +381,7 @@
          }
        }
      }
-@@ -1995,7 +2175,7 @@
+@@ -2020,7 +2223,7 @@
      anchors.margins: Style.space(1)
      color: root.transparent ? "transparent" : root.background
      borderSpec: Border.flat(root.barForeground, 1)
@@ -371,7 +390,7 @@
      opacity: root.transparent ? 0.22 : 0.32
    }
  
-@@ -2424,6 +2604,11 @@
+@@ -2449,6 +2652,11 @@
    component ModuleSlot: Item {
      id: slot
  
@@ -383,7 +402,7 @@
      property string widgetKey: ""
      property string region: ""
      property string fixedEdge: "center"
-@@ -2495,6 +2680,10 @@
+@@ -2520,6 +2728,10 @@
      }
      readonly property real widgetWidth: host ? host.widgetWidth : 0
      readonly property real widgetHeight: host ? host.widgetHeight : 0
@@ -394,7 +413,7 @@
      // Its length along the bar. The dragged widget keeps its place's share
      // of the room: all of it until the room moves away.
      readonly property real alongLength: dragSource
-@@ -2510,8 +2699,24 @@
+@@ -2535,8 +2747,24 @@
      // Handed to it as preferred sizes, since a layout left to read a size
      // that drops from a fraction of a pixel to nothing keeps the old size,
      // leaving a hole where a widget hid itself.

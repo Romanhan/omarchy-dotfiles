@@ -1794,6 +1794,26 @@ Item {
         readonly property real pillW: islandPill.width
         readonly property real pillH: islandPill.height
 
+        // Where the center box ends on the pill. The pill's own hover handler
+        // opens the indicator peek only up to here, as the stock bar surface
+        // does (BarModel.peeksAt); past it, over the clock's trailing widgets
+        // and the right section, the peek stays shut.
+        readonly property real centerEnd: islandRow.x + islandCenter.x + islandCenter.width
+        // Held while the peek is open, so revealing the indicators, which
+        // widens the center box, cannot slide the edge out from under a
+        // stationary pointer and close it again (BarModel.nextPeekEdge).
+        property real peekEdge: 0
+        function syncPeekEdge() {
+          peekEdge = BarModel.nextPeekEdge(peekEdge, centerEnd, root.centerSectionRevealHeld)
+        }
+        onCenterEndChanged: syncPeekEdge()
+        Component.onCompleted: syncPeekEdge()
+
+        Connections {
+          target: root
+          function onCenterSectionRevealHeldChanged() { islandRoot.syncPeekEdge() }
+        }
+
         BorderSurface {
           id: islandPill
           objectName: "romanhanIslandPill"
@@ -1809,12 +1829,14 @@ Item {
           Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
 
           // Hovering the pill holds the indicator peek open, the way the whole
-          // bar's hover handler does on a stock bar.
+          // bar's hover handler does on a stock bar, but only up to the end of
+          // the center box: over the right section it stays shut.
           HoverHandler {
-            onHoveredChanged: {
+            readonly property bool peeking: hovered && BarModel.peeksAt(point.position, islandRoot.peekEdge, false)
+            onPeekingChanged: {
               // The timer is already gone when the bar is torn down on a
               // scale or monitor change, but the hover handler can still fire.
-              if (hovered) {
+              if (peeking) {
                 if (root.centerSectionRevealTimer) root.centerSectionRevealTimer.stop()
                 root.centerSectionRevealHeld = true
               } else if (root.centerSectionRevealTimer) {
@@ -1868,6 +1890,7 @@ Item {
               Layout.preferredWidth: implicitWidth
             }
             ModuleList {
+              id: islandCenter
               region: "center"
               keys: root.layoutWidgets.sections.center
               fixedEdge: "center"
