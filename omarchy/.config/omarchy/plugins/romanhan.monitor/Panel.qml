@@ -5,7 +5,6 @@ import Quickshell.Io
 import qs.Ui
 import "../../ui"
 import qs.Commons
-
 import qs.Commons as Commons
 import "Model.js" as Model
 
@@ -190,8 +189,9 @@ Panel {
   // taller than its allotted height (lots of displays). Mirrors audio's
   // ensureCursorVisible helper.
   function ensureCursorVisible(item) {
-    if (!item || !scrollArea) return
-    var flick = scrollArea.contentItem
+    var area = scrollArea
+    if (!item || !area) return
+    var flick = area.contentItem
     if (!flick || flick.contentY === undefined) return
     var pt = item.mapToItem(flick.contentItem || flick, 0, 0)
     var top = pt.y
@@ -542,6 +542,7 @@ Panel {
 
             Text {
               id: heroIcon
+              textFormat: Text.PlainText
               text: root.displays.length > 1 ? "󰍺" : "󰍹"
               color: root.bar.foreground
               font.family: root.bar.fontFamily
@@ -559,7 +560,8 @@ Panel {
               spacing: Style.space(2)
 
               Text {
-                text: "Display"
+                text: Commons.I18n.t("monitor.display")
+                textFormat: Text.PlainText
                 color: root.bar.foreground
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.title
@@ -570,11 +572,12 @@ Panel {
 
               Text {
                 id: heroLabel
+                textFormat: Text.PlainText
                 text: {
                   if (root.brightnessAvailable) {
                     return root.brightnessName(brightnessSlider.dragging ? brightnessSlider.liveValue : root.brightnessPercent).toUpperCase()
                   }
-                  return "FIXED BRIGHTNESS"
+                  return Commons.I18n.t("monitor.fixedBrightness")
                 }
                 color: Qt.darker(root.bar.foreground, 1.4)
                 font.family: root.bar.fontFamily
@@ -604,7 +607,7 @@ Panel {
 
               PanelSectionHeader {
                 id: brightnessHeader
-                text: "BRIGHTNESS"
+                text: Commons.I18n.t("monitor.brightness")
                 foreground: root.bar.foreground
                 fontFamily: root.bar.fontFamily
                 anchors.left: parent.left
@@ -613,7 +616,8 @@ Panel {
 
               Text {
                 id: brightnessPercent
-                text: Math.round(brightnessSlider.dragging ? brightnessSlider.liveValue : root.brightnessPercent) + "%"
+                textFormat: Text.PlainText
+                text: Commons.I18n.formatNumber(Math.round(brightnessSlider.dragging ? brightnessSlider.liveValue : root.brightnessPercent)) + "%"
                 color: Qt.darker(root.bar.foreground, 1.4)
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.caption
@@ -676,7 +680,7 @@ Panel {
 
               PanelSectionHeader {
                 id: textSizeHeader
-                text: "TEXT SIZE"
+                text: Commons.I18n.t("monitor.textSize")
                 foreground: root.bar.foreground
                 fontFamily: root.bar.fontFamily
                 anchors.left: parent.left
@@ -685,7 +689,8 @@ Panel {
 
               Text {
                 id: textSizePx
-                text: (textSizeSlider.dragging
+                textFormat: Text.PlainText
+                text: Commons.I18n.formatNumber(textSizeSlider.dragging
                        ? root.textSizeStops[Math.round(textSizeSlider.liveValue)]
                        : root.displayedTextPx()) + "px"
                 color: Qt.darker(root.bar.foreground, 1.4)
@@ -747,7 +752,7 @@ Panel {
 
               PanelSectionHeader {
                 id: scaleHeader
-                text: "SCALE"
+                text: Commons.I18n.t("monitor.scale")
                 foreground: root.bar.foreground
                 fontFamily: root.bar.fontFamily
                 anchors.left: parent.left
@@ -758,6 +763,7 @@ Panel {
               // focused one.
               Text {
                 id: scaleMonitor
+                textFormat: Text.PlainText
                 text: root.focusedMonitor
                 // Only worth naming when more than one display is in play.
                 visible: root.focusedMonitor !== "" && root.enabledDisplayCount > 1
@@ -808,7 +814,7 @@ Panel {
             visible: root.displays.length > 1
 
             PanelSectionHeader {
-              text: "DISPLAYS"
+              text: Commons.I18n.t("monitor.displays")
               foreground: root.bar.foreground
               fontFamily: root.bar.fontFamily
             }
@@ -841,7 +847,7 @@ Panel {
     required property string scaleValue
     required property int scaleIndex
 
-    text: root.effectiveScale(scaleValue) + "x"
+    text: Commons.I18n.formatNumber(root.effectiveScale(scaleValue)) + "x"
     fontSize: Style.font.caption
     foreground: root.bar.foreground
     fontFamily: root.bar.fontFamily
@@ -898,7 +904,10 @@ Panel {
       }
 
       Text {
-        text: monitorRow.display.name + (monitorRow.display.focused ? " · focused" : "")
+        textFormat: Text.PlainText
+        text: monitorRow.display.focused
+          ? Commons.I18n.t("monitor.displayFocused").arg(monitorRow.display.name)
+          : monitorRow.display.name
         color: root.bar.foreground
         font.family: root.bar.fontFamily
         font.pixelSize: Style.font.body
@@ -908,6 +917,7 @@ Panel {
       }
 
       Text {
+        textFormat: Text.PlainText
         text: monitorRow.display.enabled ? "󰄬" : ""
         color: root.bar.foreground
         font.family: root.bar.fontFamily
