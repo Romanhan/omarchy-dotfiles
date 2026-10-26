@@ -24,12 +24,17 @@ import qs.Commons as Commons
 // Missing on purpose (for now): triggerMode ("hover"), containsMouse.
 //
 // Positioning: full-screen layer-shell with the card placed inside at
-// `cardOrigin`. We use the bar window's height/width for the perpendicular
-// axis (away-from-bar) because mapToItem on the anchor returns
-// bar-content-relative coords with internal layout offsets baked in
-// (e.g. ~13px from the bar's vertical centering of its widget row). The
-// parallel axis (along-the-bar) uses the anchor's content x/y since the
-// bar spans full screen on that axis.
+// `cardOrigin`. The perpendicular axis (away-from-bar) hangs the card off
+// the bar strip's inner edge — the island pill's own edge when the custom
+// bar draws one, the strip's thickness otherwise — because mapToItem on
+// the anchor returns bar-content-relative coords with internal layout
+// offsets baked in (e.g. ~13px from the bar's vertical centering of its
+// widget row). The parallel axis (along-the-bar) uses the anchor's
+// content x/y since the bar spans full screen on that axis. The bar
+// WINDOW spans its whole screen since Omarchy made the surface full-size
+// (r7314), so its dimensions are used only to map coordinates between
+// the overlay and the bar window (barPoint below), never to size or
+// place the card.
 //
 // Outside-click dismissal: an overlay MouseArea catches clicks, with the
 // QsWindow.mask subtracting the bar strip so clicks on the bar still
@@ -118,11 +123,7 @@ PanelWindow {
   // Clickable region is the whole screen. Clicks in the bar strip are
   // forwarded to registered bar buttons so switching between panel icons
   // works in one click even when the overlay surface is above the bar.
-  readonly property real _barStripSize: {
-    if (!bar) return 0
-    var actual = (root.barPos === "top" || root.barPos === "bottom") ? root.barH : root.barW
-    return Math.max(bar.barSize, actual) + root.gap
-  }
+  readonly property real _barStripSize: bar ? root.stripExtent + root.gap : 0
   mask: Region {
     width: root.screenW
     height: root.screenH
@@ -142,7 +143,7 @@ PanelWindow {
   // full-width top bar, the content x maps directly to screen x; the y
   // returned here has the bar's internal padding baked in (e.g. ~13px
   // from vertical centering of the widget row), which is why `cardOrigin`
-  // below uses `barH` for the perpendicular axis instead of this y.
+  // below hangs the card from the strip's inner edge instead of this y.
   readonly property point anchorScreenPos: {
     anchorWatcher.transform  // reactive dependency
     if (!anchorItem || !anchorWindow) return Qt.point(0, 0)
@@ -182,10 +183,10 @@ PanelWindow {
   readonly property real screenW: screen ? screen.width : 0
   readonly property real screenH: screen ? screen.height : 0
   readonly property real availableCardWidth: screenW > 0
-    ? Math.max(120, screenW - ((barPos === "left" || barPos === "right") ? barW + gap + margin : margin * 2))
+    ? Math.max(120, screenW - ((barPos === "left" || barPos === "right") ? stripExtent + gap + margin : margin * 2))
     : 0
   readonly property real availableCardHeight: screenH > 0
-    ? Math.max(120, screenH - ((barPos === "top" || barPos === "bottom") ? barH + gap + margin : margin * 2))
+    ? Math.max(120, screenH - ((barPos === "top" || barPos === "bottom") ? stripExtent + gap + margin : margin * 2))
     : 0
   readonly property real verticalContentInset: padding * 2
 
@@ -210,16 +211,30 @@ PanelWindow {
   }
 
   // Desired top-left of the card in screen coordinates. For the
-  // perpendicular axis (away-from-bar) we anchor to the bar window's edge
-  // directly — not the anchor item's y/x — because mapToItem(barContent)
+  // perpendicular axis (away-from-bar) we anchor to the bar strip's inner
+  // edge — not the anchor item's y/x — because mapToItem(barContent)
   // returns coordinates in the bar's content space, which can be offset
-  // from the bar surface's screen-anchored corner by internal layout
-  // (centering wrappers, padding). The bar's surface IS aligned to its
-  // anchored screen edge, so using `barW`/`barH` gives the right edge
-  // regardless of how the bar's internal widgets are positioned. For the
-  // parallel axis (along the bar) the anchor item's reported position is
-  // still consistent with the bar content origin, so it's accurate for
+  // from the strip's screen-anchored corner by internal layout
+  // (centering wrappers, padding). The strip hugs the bar's anchored
+  // screen edge, so its thickness gives the inner edge regardless of how
+  // the bar's internal widgets are positioned; the island pill is found
+  // by object name and refines this when present. For the parallel axis
+  // (along the bar) the anchor item's reported position is still
+  // consistent with the bar content origin, so it's accurate for
   // centering the card under the icon.
+  //
+  // The bar window spans its whole screen since Omarchy made the surface
+  // full-size (r7314), so the window's dimensions say nothing about the
+  // strip. The strip's thickness comes from the bar API: per-screen when
+  // the API can answer (a notch floor can raise a top bar), the plain
+  // barSize otherwise. The island floats its pill `islandGap` below the
+  // screen edge, so its strip reaches that much deeper.
+  readonly property real barThickness: !bar ? 0
+    : (typeof bar.barSizeFor === "function" && screen ? bar.barSizeFor(screen.name) : bar.barSize)
+  readonly property real stripExtent: !bar ? 0
+    : (barPos === "top" || barPos === "bottom")
+      ? barThickness + (Number(bar.islandGap) || 0)
+      : barThickness
   readonly property real barW: anchorWindow ? anchorWindow.width : screenW
   readonly property real barH: anchorWindow ? anchorWindow.height : 0
   readonly property point cardOrigin: {
@@ -230,23 +245,23 @@ PanelWindow {
       // Centering changes only the horizontal alignment; use the same
       // island edge as other panels so the calendar grows from the pill.
       y = barPos === "bottom"
-        ? (pillRect.height > 0 ? pillBottom - contentHeight : screenH - barH - contentHeight)
-        : (pillRect.height > 0 ? pillTop : barH)
+        ? (pillRect.height > 0 ? pillBottom - contentHeight : screenH - stripExtent - contentHeight)
+        : (pillRect.height > 0 ? pillTop : stripExtent)
     } else if (centerOnBar) {
-      x = barPos === "left" ? barW : screenW - barW - contentWidth
+      x = barPos === "left" ? stripExtent : screenW - stripExtent - contentWidth
       y = screenH / 2 - contentHeight / 2
     } else if (barPos === "bottom") {
       x = root.pillLeft + (pillRect.width - contentWidth) / 2
-      y = root.pillRect.height > 0 ? root.pillBottom - contentHeight : screenH - barH - contentHeight
+      y = root.pillRect.height > 0 ? root.pillBottom - contentHeight : screenH - stripExtent - contentHeight
     } else if (barPos === "left") {
-      x = barW
+      x = stripExtent
       y = root.pillTop + (pillRect.height - contentHeight) / 2
     } else if (barPos === "right") {
-      x = screenW - barW - contentWidth
+      x = screenW - stripExtent - contentWidth
       y = root.pillTop + (pillRect.height - contentHeight) / 2
     } else { // "top" (default)
       x = root.pillLeft + (pillRect.width - contentWidth) / 2
-      y = root.pillRect.height > 0 ? root.pillTop : barH
+      y = root.pillRect.height > 0 ? root.pillTop : stripExtent
     }
     x = Math.max(margin, Math.min(x, screenW - contentWidth - margin))
     y = Math.max(margin, Math.min(y, screenH - contentHeight - margin))

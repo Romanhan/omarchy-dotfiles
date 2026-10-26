@@ -29,13 +29,22 @@ PopupWindow {
   readonly property bool containsMouse: cardHover.hovered
   readonly property real screenW: popupScreen ? popupScreen.width : 0
   readonly property real screenH: popupScreen ? popupScreen.height : 0
-  readonly property real barW: anchorWindow ? anchorWindow.width : 0
-  readonly property real barH: anchorWindow ? anchorWindow.height : 0
+  // The strip the bar draws in. The bar window spans its whole screen since
+  // Omarchy made the surface full-size (r7314), so its dimensions say
+  // nothing about the strip; the strip hugs the anchored edge at the bar's
+  // thickness for this screen, and the island floats its pill `islandGap`
+  // below that edge.
+  readonly property real barThickness: !bar ? 0
+    : (typeof bar.barSizeFor === "function" && popupScreen ? bar.barSizeFor(popupScreen.name) : bar.barSize)
+  readonly property real stripExtent: !bar ? 0
+    : (barPos === "top" || barPos === "bottom")
+      ? barThickness + (Number(bar.islandGap) || 0)
+      : barThickness
   readonly property real availableCardWidth: screenW > 0
-    ? Math.max(120, screenW - ((bar && (bar.position === "left" || bar.position === "right")) ? barW : 0) - root.margin * 2)
+    ? Math.max(120, screenW - ((bar && (bar.position === "left" || bar.position === "right")) ? stripExtent : 0) - root.margin * 2)
     : 0
   readonly property real availableCardHeight: screenH > 0
-    ? Math.max(120, screenH - ((bar && (bar.position === "top" || bar.position === "bottom")) ? barH : 0) - root.margin * 2)
+    ? Math.max(120, screenH - ((bar && (bar.position === "top" || bar.position === "bottom")) ? stripExtent : 0) - root.margin * 2)
     : 0
   readonly property real verticalContentInset: padding * 2
 
