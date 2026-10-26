@@ -1,6 +1,6 @@
 --- a/Bar.qml
 +++ b/Bar.qml
-@@ -59,6 +59,32 @@
+@@ -60,6 +60,32 @@
    // The look the blur behind the bar was last synced for. A background set by
    // editing shell.json skips the CLI, so the bar syncs Hyprland's blur itself.
    property string glassSyncedLook: ""
@@ -33,7 +33,7 @@
    // One bar surface exists per monitor and each reports into this count, so a
    // pointer crossing from one monitor's bar to another's stays counted however
    // the enter and leave interleave. A single shared bool would be left false by
-@@ -112,6 +138,9 @@
+@@ -144,6 +170,9 @@
      }
      return false
    }
@@ -43,7 +43,7 @@
    property var barDragSource: null
    // Where the dragged widget would land: { slot, after } beside a widget, or
    // { region, after } at an end of a section (see BarModel.centerDropTarget
-@@ -174,7 +203,33 @@
+@@ -221,7 +250,33 @@
  
    Component {
      id: pluginBarApiComponent
@@ -78,7 +78,7 @@
    }
  
    function publicLayoutConfig() {
-@@ -364,6 +419,7 @@
+@@ -413,6 +468,7 @@
      for (var i = 0; i < owned.length; i++) {
        var record = owned[i]
        if (!record || record.pluginId !== pluginId) continue
@@ -86,7 +86,7 @@
        if (record.clickTarget) root.unregisterClickTarget(record.target)
        if (record.popout && root.activePopout === record.target) root.releasePopout(record.target)
        pluginObjectOwners.delete(record.target)
-@@ -655,8 +711,21 @@
+@@ -712,8 +768,21 @@
      if (activePopout === owner) activePopout = null
    }
  
@@ -109,80 +109,88 @@
  
    // Display cutouts (a camera notch) the platform's own package describes in
    // the fixed platform root, which no environment variable moves. Most machines
-@@ -1534,6 +1603,11 @@
-   component BarPanel: PanelWindow {
-     id: barWindow
- 
-+    // Width of the island content (module row + pill padding), reported by the
-+    // horizontal content so the layer surface can shrink/grow to hug it.
-+    readonly property real islandContentWidth: barContent.item && barContent.item.contentWidth
-+        ? barContent.item.contentWidth : 0
-+
-     // Hiding parks the bar just past its screen edge instead of unmapping it.
-     // Unmapping frees the layer surface and the whole scene graph, so every
-     // reveal has to rebuild them — new surface, re-shaped glyphs, re-uploaded
-@@ -1545,7 +1619,21 @@
-     // instead of growing once the windows are laid out. The wait ends once, for
+@@ -1711,9 +1780,11 @@
      // good: when the mode settles it, or after two seconds without one.
      visible: !remapGuard.remapping && (cutoutWaitOver || !cutoutPending)
--    exclusionMode: root.barHidden ? ExclusionMode.Ignore : ExclusionMode.Auto
-+    exclusionMode: ExclusionMode.Auto
-+
-+    // Full-width transparent surface + capsule mask: the layer surface never
-+    // resizes during a morph (so its straight edges can't clip the rounded
-+    // ends), and input/visibility is limited to the animated capsule.
-+    mask: Region {
-+      x: root.vertical ? 0
-+        : Math.floor(barContent.item ? barContent.item.pillX : 0) - 2
-+      y: root.vertical ? 0
-+        : Math.floor(barContent.item ? barContent.item.pillY : 0) - 2
-+      width: root.vertical ? barWindow.width
-+        : Math.ceil(barContent.item ? barContent.item.pillW : 0) + 4
-+      height: root.vertical ? barWindow.height
-+        : Math.ceil(barContent.item ? barContent.item.pillH : 0) + 4
-+    }
+     // An explicit zone instead of Auto: the reserved area stays the strip's
+-    // thickness though the window spans its screen.
++    // thickness though the window spans its screen. The island's strip is
++    // deeper than the bar and floats above the screen edge, so it reserves
++    // both, and tiled windows clear the whole pill.
+     exclusionMode: root.barHidden ? ExclusionMode.Ignore : ExclusionMode.Normal
+-    exclusiveZone: thickness
++    exclusiveZone: reservedThickness
  
-     ScreenMoveRemap {
-       id: remapGuard
-@@ -1555,10 +1643,14 @@
-     // Parked by its full thickness, which a notch floor may make more than
-     // barSize, so no strip of it stays on screen.
-     margins {
--      top: root.barHidden && root.position === "top" ? -barWindow.thickness : 0
--      bottom: root.barHidden && root.position === "bottom" ? -barWindow.thickness : 0
--      left: root.barHidden && root.position === "left" ? -barWindow.thickness : 0
--      right: root.barHidden && root.position === "right" ? -barWindow.thickness : 0
-+      top: root.barHidden && root.position === "top" ? -barWindow.thickness
-+          : root.vertical ? 0 : root.islandGap
-+      bottom: root.barHidden && root.position === "bottom" ? -barWindow.thickness
-+          : root.vertical ? 0 : 0
-+      left: root.barHidden && root.position === "left" ? -barWindow.thickness
-+          : root.vertical ? 0 : 0
-+      right: root.barHidden && root.position === "right" ? -barWindow.thickness
-+          : root.vertical ? 0 : 0
-     }
+     // While this window's widget or bar-move drag is live, the whole surface
+     // takes input (mask below), so the pointer never leaves the bar surface
+@@ -1767,6 +1838,14 @@
  
-     anchors {
-@@ -1591,13 +1683,16 @@
-     property real peekEdge: 0
- 
-     implicitWidth: root.vertical ? thickness : 0
--    implicitHeight: root.vertical ? 0 : thickness
--    color: root.transparent ? "transparent" : (root.glassy ? root.glassBackground : root.background)
-+    // +4 gives the pill 2px clearance from the surface edges on each side, so
-+    // fractional-scaling pixel snapping can never shave the rounded arcs.
-+    implicitHeight: root.vertical ? 0 : root.barSize + 4 + 2 * root.barGap
-+    color: root.vertical ? (root.transparent ? "transparent" : (root.glassy ? root.glassBackground : root.background)) : "transparent"
-     surfaceFormat.opaque: false
-     WlrLayershell.namespace: "omarchy-bar"
+     // The same thickness the bar publishes for its screen (screenBarSizes).
+     readonly property int thickness: root.thicknessFor(screen)
++    // The strip the bar draws in. The island pill is barSize tall with 2px of
++    // clearance around it, so a horizontal strip is that much deeper than the
++    // bar; the vertical bar keeps stock's width.
++    readonly property int stripThickness: root.vertical ? thickness : thickness + 4 + 2 * root.barGap
++    // What the layer surface reserves: the strip plus the gap the pill floats
++    // above the screen edge, so tiled windows clear the whole pill, not just
++    // its rim.
++    readonly property int reservedThickness: root.vertical ? thickness : stripThickness + root.islandGap
+     // Where the center box starts along the bar, set by the drawn center
+     // sections. Hovering past it, over the clock, its trailing widgets and the
+     // right section, leaves the indicator peek shut.
+@@ -1788,29 +1867,46 @@
      WlrLayershell.layer: WlrLayer.Top
  
-     Loader {
-+      id: barContent
-       anchors.fill: parent
-       sourceComponent: root.vertical ? verticalBar : horizontalBar
+     // Idle, only the strip takes input, so the clear expanse passes clicks
+-    // through to the windows and desktop below.
+-    mask: dragActive ? null : stripInputRegion
++    // through to the windows and desktop below. A horizontal island takes
++    // input on the pill alone, as its layer surface sized itself before.
++    mask: dragActive ? null : (root.vertical ? stripInputRegion : islandInputRegion)
  
-@@ -1617,7 +1712,7 @@
+     Region {
+       id: stripInputRegion
+       item: barStrip
+     }
+ 
++    // The pill, in surface coordinates: the loader fills the strip, so the
++    // pill's place within it is offset by the strip's own place in the
++    // surface.
++    Region {
++      id: islandInputRegion
++      x: Math.floor(barStrip.x + (barContent.item ? barContent.item.pillX : 0)) - 2
++      y: Math.floor(barStrip.y + (barContent.item ? barContent.item.pillY : 0)) - 2
++      width: Math.ceil(barContent.item ? barContent.item.pillW : 0) + 4
++      height: Math.ceil(barContent.item ? barContent.item.pillH : 0) + 4
++    }
++
+     // The bar itself, along its screen edge.
+     Item {
+       id: barStrip
+ 
+-      x: root.position === "right" ? parent.width - barWindow.thickness : 0
+-      y: root.position === "bottom" ? parent.height - barWindow.thickness : 0
++      x: root.vertical && root.position === "right" ? parent.width - barWindow.thickness : 0
++      y: root.vertical ? 0
++        : (root.position === "bottom" ? parent.height - barWindow.stripThickness : root.islandGap)
+       width: root.vertical ? barWindow.thickness : parent.width
+-      height: root.vertical ? parent.height : barWindow.thickness
++      height: root.vertical ? parent.height : barWindow.stripThickness
+ 
++      // The island pill paints its own capsule, so a horizontal bar leaves the
++      // strip clear; only the vertical bar draws a full-length strip.
+       Rectangle {
+         anchors.fill: parent
++        visible: root.vertical
+         color: root.transparent ? "transparent" : (root.glassy ? root.glassBackground : root.background)
+       }
+ 
+       Loader {
++        id: barContent
+         anchors.fill: parent
+         sourceComponent: root.vertical ? verticalBar : horizontalBar
+ 
+@@ -1831,7 +1927,7 @@
        id: tooltipWindow
  
        visible: root.tooltipShown && root.tooltipTarget !== null && root.tooltipText !== "" && root.targetBelongsToWindow(root.tooltipTarget, barWindow)
@@ -191,7 +199,7 @@
        implicitWidth: Math.ceil(tooltipBubble.implicitWidth)
        implicitHeight: Math.ceil(tooltipBubble.implicitHeight)
  
-@@ -1681,48 +1776,156 @@
+@@ -1895,48 +1991,158 @@
        id: horizontalBar
  
        Item {
@@ -218,19 +226,21 @@
 +        readonly property real pillW: islandPill.width
 +        readonly property real pillH: islandPill.height
 +
-+        // Where the center box ends on the pill. The pill's own hover handler
-+        // opens the indicator peek only up to here, as the stock bar surface
-+        // does (BarModel.peeksAt); past it, over the clock's trailing widgets
-+        // and the right section, the peek stays shut.
-+        readonly property real centerEnd: islandRow.x + islandCenter.x + islandCenter.width
++        // Where the center box starts on the pill — the island's center
++        // section plays the center box's part, and its first widget is where
++        // stock measures the clock from. The pill's own hover handler opens
++        // the indicator peek only left of here, as the stock bar surface does
++        // (BarModel.peeksAt); over the center box and the right section it
++        // stays shut.
++        readonly property real centerStart: islandRow.x + islandCenter.x
 +        // Held while the peek is open, so revealing the indicators, which
 +        // widens the center box, cannot slide the edge out from under a
 +        // stationary pointer and close it again (BarModel.nextPeekEdge).
 +        property real peekEdge: 0
 +        function syncPeekEdge() {
-+          peekEdge = BarModel.nextPeekEdge(peekEdge, centerEnd, root.centerSectionRevealHeld)
++          peekEdge = BarModel.nextPeekEdge(peekEdge, centerStart, root.centerSectionRevealHeld)
          }
-+        onCenterEndChanged: syncPeekEdge()
++        onCenterStartChanged: syncPeekEdge()
 +        Component.onCompleted: syncPeekEdge()
  
 -        LeftModules {
@@ -267,8 +277,8 @@
 +          Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
 +
 +          // Hovering the pill holds the indicator peek open, the way the whole
-+          // bar's hover handler does on a stock bar, but only up to the end of
-+          // the center box: over the right section it stays shut.
++          // bar's hover handler does on a stock bar, but only left of the
++          // center box: over it and the right section it stays shut.
 +          HoverHandler {
 +            readonly property bool peeking: hovered && BarModel.peeksAt(point.position, islandRoot.peekEdge, false)
 +            onPeekingChanged: {
@@ -381,7 +391,7 @@
          }
        }
      }
-@@ -2020,7 +2223,7 @@
+@@ -2382,7 +2588,7 @@
      anchors.margins: Style.space(1)
      color: root.transparent ? "transparent" : root.background
      borderSpec: Border.flat(root.barForeground, 1)
@@ -390,7 +400,7 @@
      opacity: root.transparent ? 0.22 : 0.32
    }
  
-@@ -2449,6 +2652,11 @@
+@@ -2811,6 +3017,11 @@
    component ModuleSlot: Item {
      id: slot
  
@@ -402,7 +412,7 @@
      property string widgetKey: ""
      property string region: ""
      property string fixedEdge: "center"
-@@ -2520,6 +2728,10 @@
+@@ -2886,6 +3097,10 @@
      }
      readonly property real widgetWidth: host ? host.widgetWidth : 0
      readonly property real widgetHeight: host ? host.widgetHeight : 0
@@ -412,8 +422,8 @@
 +    readonly property bool slotRevealed: root.islandRevealed || root.islandCoreIds.indexOf(moduleName) !== -1
      // Its length along the bar. The dragged widget keeps its place's share
      // of the room: all of it until the room moves away.
-     readonly property real alongLength: dragSource
-@@ -2535,8 +2747,24 @@
+     readonly property real alongLength: removalPending ? 0 : dragSource
+@@ -2901,8 +3116,24 @@
      // Handed to it as preferred sizes, since a layout left to read a size
      // that drops from a fraction of a pixel to nothing keeps the old size,
      // leaving a hole where a widget hid itself.
