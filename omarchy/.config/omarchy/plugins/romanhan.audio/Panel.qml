@@ -158,7 +158,7 @@ Panel {
   // Re-resolve whenever the selected output changes, and when nodes or links
   // come and go: a tuning being applied or removed underneath us, or a DSP sink
   // rerouted to another output, shows up as exactly that.
-  onSinkChanged: Qt.callLater(root.resolveVolumeSink)
+  onSinkChanged: resolveVolumeSink()
   onNodesChanged: volumeSinkResolveTimer.restart()
 
   Connections {
@@ -427,14 +427,16 @@ Panel {
   // walk the selection off-screen — wifi uses ListView.positionViewAtIndex
   // for this; we don't have that affordance with a multi-section Column.
   function resetScroll() {
-    if (!scrollArea) return
-    var flick = scrollArea.contentItem
+    var area = scrollArea
+    if (!area) return
+    var flick = area.contentItem
     if (flick && flick.contentY !== undefined) flick.contentY = 0
   }
 
   function ensureCursorVisible(item) {
-    if (!item || !scrollArea) return
-    var flick = scrollArea.contentItem
+    var area = scrollArea
+    if (!item || !area) return
+    var flick = area.contentItem
     if (!flick || flick.contentY === undefined) return
     var margin = 6
     var maxY = Math.max(0, (flick.contentHeight || 0) - flick.height)
@@ -900,7 +902,7 @@ Panel {
 
               PanelSectionHeader {
                 id: outputHeader
-                text: Commons.I18n.t("audio.output").toUpperCase()
+                text: Commons.I18n.t("audio.output")
                 foreground: root.bar.foreground
                 fontFamily: root.bar.fontFamily
                 anchors.left: parent.left
@@ -987,7 +989,7 @@ Panel {
 
               PanelSectionHeader {
                 id: microphoneHeader
-                text: Commons.I18n.t("audio.input").toUpperCase()
+                text: Commons.I18n.t("audio.input")
                 foreground: root.bar.foreground
                 fontFamily: root.bar.fontFamily
                 anchors.left: parent.left
@@ -1095,7 +1097,7 @@ Panel {
             visible: root.displayAudioStreams.length > 0
 
             PanelSectionHeader {
-              text: Commons.I18n.t("audio.sources").toUpperCase()
+              text: Commons.I18n.t("audio.sources")
               foreground: root.bar.foreground
               fontFamily: root.bar.fontFamily
             }
