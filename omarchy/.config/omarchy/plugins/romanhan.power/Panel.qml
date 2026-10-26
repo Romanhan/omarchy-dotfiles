@@ -257,7 +257,7 @@ Panel {
     id: phraseSwap
     PropertyAnimation {
       target: heroStatus; property: "opacity"
-      to: 0.0; duration: Style.duration(180); easing.type: Easing.OutQuad
+      to: 0.0; duration: Style.duration(150); easing.type: Easing.OutCubic
     }
     ScriptAction {
       script: {
@@ -267,7 +267,7 @@ Panel {
     }
     PropertyAnimation {
       target: heroStatus; property: "opacity"
-      to: 1.0; duration: Style.duration(260); easing.type: Easing.InQuad
+      to: 1.0; duration: Style.duration(200); easing.type: Easing.OutCubic
     }
   }
 
@@ -288,9 +288,8 @@ Panel {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: root.showPercentage && !vertical
-      ? Commons.I18n.formatNumber(Math.round(root.batteryFraction * 100)) + "% " + root.batteryIcon()
-      : root.batteryIcon()
+    text: root.batteryIcon()
+    labelText: root.showPercentage && !vertical ? Commons.I18n.formatNumber(Math.round(root.batteryFraction * 100)) + "%" : ""
     slotSize: Style.bar.iconSlot * (root.showPercentage && !vertical ? 2 : 1)
     tooltipText: ""
     onPressed: function(b) {
@@ -425,8 +424,8 @@ Panel {
               running: root.charging && !root.fullyCharged && root.opened && !Style.reduceMotion
               loops: Animation.Infinite
               alwaysRunToEnd: true
-              NumberAnimation { from: 1.0; to: 0.55; duration: 950; easing.type: Easing.InOutSine }
-              NumberAnimation { from: 0.55; to: 1.0; duration: 950; easing.type: Easing.InOutSine }
+              NumberAnimation { from: 1.0; to: 0.55; duration: Style.duration(950); easing.type: Easing.InOutSine }
+              NumberAnimation { from: 0.55; to: 1.0; duration: Style.duration(950); easing.type: Easing.InOutSine }
             }
           }
         }
