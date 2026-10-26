@@ -17,6 +17,16 @@ Run `./rebuild` after an Omarchy update. The post-update hook does this
 automatically for `omarchy update`. If a patch no longer applies, `rebuild`
 leaves the existing working files untouched and exits nonzero.
 
+## Known warnings
+
+On every shell start the journal shows a few
+`TypeError: Property 'pluginBarApiFor' of object Bar_QMLTYPE_… is not a
+function` warnings. That is upstream
+[omacom/omarchy#13578](https://github.com/omacom/omarchy/issues/13578): a
+transiently cloned bar instance evaluates a plugin API binding before the
+clone is wired up. It is cosmetic, happens on a stock cloned bar too, and
+needs no fix here.
+
 ## Custom files
 
 - `widgets/Indicators.qml` and `indicators/` — compact active-only indicator
