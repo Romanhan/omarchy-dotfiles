@@ -180,6 +180,10 @@ Panel {
   function startEditingLife() {
     root.editingLife = true
     Qt.callLater(function() {
+      var content = keyCatcher
+      if (!content) return
+      var bornField = content.bornField
+      var expectancyField = content.expectancyField
       bornField.text = root.birthYear > 0 ? String(root.birthYear) : ""
       expectancyField.text = String(root.lifeExpectancy)
       bornField.selectAll()
@@ -217,6 +221,10 @@ Panel {
   }
 
   function commitLife() {
+    var content = keyCatcher
+    if (!content) return
+    var bornField = content.bornField
+    var expectancyField = content.expectancyField
     var born = Model.parseBirthYear(bornField.text, today.getFullYear())
     var span = Model.parseLifeExpectancy(expectancyField.text)
     if (born !== root.birthYear || span !== root.lifeExpectancy)
@@ -250,7 +258,9 @@ Panel {
     owner: root.barIdentity
     bar: root.bar
     open: root.opened
-    centerOnBar: true
+    // Anchor under the widget rather than the middle of the bar, so the
+    // popup follows wherever the widget is placed.
+    centerOnBar: false
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(560))
     contentHeight: panel.fittedContentHeight(calendarColumn.implicitHeight)
