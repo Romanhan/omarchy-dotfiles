@@ -1,14 +1,22 @@
 # Tailscale Omarchy Widget
 
-Native Omarchy bar widget for Tailscale.
+Roman's fork of `omarchy.tailscale`, cloned so the panel grows out of the
+dynamic island pill. The panel, service, and model are stock r7314; the only
+adaptation is in `Panel.qml` — the local `../../ui/KeyboardPanel.qml` builds
+its content eagerly, so the `PanelKeyCatcher` is a plain child, `focusTarget`
+points at it, the card height comes from `column.implicitHeight`, and the
+root's helpers reach the content ids directly (file-scoped) instead of through
+`panel.loadedContent`. The island morph itself lives in that shared
+KeyboardPanel.
 
-## Features
+Stock features:
 
 - Shows Tailscale connection state in the bar
 - Left click opens a keyboard-friendly panel
 - Right click toggles Tailscale on/off
 - Switch between available Tailscale connections when multiple are available
-- Browse machines from `tailscale status --json`
+- Browse and search machines from `tailscale status --json` (virtualized list
+  for large tailnets)
 - Copy a machine's Tailscale IP, host name, or DNS name
 - Send files to a machine with Taildrop, when the tailnet allows file sharing
 
