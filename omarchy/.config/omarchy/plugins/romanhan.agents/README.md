@@ -1,29 +1,35 @@
 # Agents
 
-One bar icon and one panel for every AI coding subscription on the machine.
-The panel is strictly a display: it watches the usage records that
+Roman's fork of `omarchy.agents`, cloned so the panel can grow out of the
+dynamic island pill. Since Omarchy r7314 the panel content is stock verbatim —
+sections with full agent names, per-account limits with autoswitch, prepaid
+balances, the rotating hero summary — with one adaptation: the local
+`../../ui/KeyboardPanel.qml` builds its content eagerly (no lazy `content`
+loader), so the stock `PanelKeyCatcher` is a plain child, `focusTarget` points
+at it directly, and the card height comes from `column.implicitHeight`. The
+island morph (card out of pill, `pillRect` positioning) lives in that shared
+KeyboardPanel, not here.
+
+The usage records are shared with the stock plugin: whatever
 `omarchy-agent-usage-update` writes to `~/.local/state/omarchy/agents/usage/`
-and draws whatever appears there. `Panel.qml` owns the bar button and the
-popup; `Main.qml` discovers and watches the records (and handles the optional
+is what both draw. `Main.qml` is stock (discovery, watching, optional
 cross-device aggregation); `Agent.qml` is the per-record file watcher.
 
-## Panel
+## Panel (stock r7314 display)
 
-- **Hero** — the mark, the tool, and the plan it runs on ("Max 20x", "Pro").
-  Auth and endpoint problems replace the plan line and repeat in a card.
-- **Subscription switch** — one chip per enabled agent (`h`/`l` or click).
-  It appears only when more than one agent is enabled.
-- **Limits** — the percentage of each allowance used, a matching meter, and
-  the time until the session or weekly window resets.
-- **Balance** — prepaid agents report a credit ledger instead of limits:
-  remaining credit, a fuel-gauge meter that drains toward empty, and
-  funded-versus-spent detail.
-- **Tokens by day** — one row per day for the last week: day, bar, tokens, with today
-  bolded at the bottom. Hover today for its prompt and session count.
-- **Tokens by model** — tokens per model with the bar behind each row scaled
-  to the heaviest model,
-  the same way the weekly chart scales to its busiest day. Hover for the
-  input / output / cache split.
+- **Hero** — a line that rotates through the totals: tokens this week and
+  today, the most used model ("Mostly Sonnet 4.5"), the busiest day, today's
+  prompts and sessions. `+` adds a subscription, `>_` starts the default agent.
+- **One section per agent** — mark, full name, and plan; a meter per limit
+  window with the time until it resets; sign-in and endpoint trouble under the
+  name in the urgent color.
+- **Accounts** — per-account limit lines, an _ACTIVE_ label, _Use_ and
+  Autoswitch links, in-place renaming.
+- **Balance** — prepaid credit ledger with a fuel-gauge meter.
+- **Make something cool** — starter prompts that launch the default agent.
+
+The stock README in `/usr/share/omarchy/shell/plugins/agents/` documents the
+full behavior; this fork changes none of it.
 
 A subscription appears only when it is enabled in settings and has actually
 recorded usage — on this machine or on a synced one. With one such agent
@@ -94,10 +100,12 @@ only adds the meter and the spent-of-funded line under the real figure.
 
 ## Interactions
 
-- Bar icon: left = panel, right = launch agent, middle = next subscription.
-- Panel: `h`/`l` switch subscription, `j`/`k` scroll, `r` or Enter refresh,
-  Tab moves to the neighboring bar panel, Esc closes.
-- IPC: `omarchy-shell omarchy.agents <open|close|toggle|refresh|next>`.
+Stock's keyboard model applies unchanged: arrows or `h`/`j`/`k`/`l` walk a
+cursor over everything interactive (agent headers, accounts, the hero's
+buttons), Ctrl+Up/Down reorders agents, `r` refreshes, Tab moves to the
+neighboring bar panel, Esc closes. Bar icon: left = panel, right = launch
+agent, middle = refresh. IPC:
+`omarchy-shell omarchy.agents <open|close|toggle|refresh|next>`.
 
 ## Settings
 
