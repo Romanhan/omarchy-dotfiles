@@ -1,13 +1,11 @@
 #!/bin/sh
 # Clone the upstream themes that are too large to keep in this repo.
 #
-# Their working copies live under the stowed themes directory; .gitignore
-# excludes them so the dotfiles repo stays small. Existing checkouts are left
-# alone, so this is safe to rerun after setup.
+# Their working copies live under the live themes directory. Existing
+# checkouts are left alone, so this is safe to rerun after setup.
 set -eu
 
-repo=$(cd -- "$(dirname -- "$0")/.." && pwd)
-themes="$repo/omarchy/.config/omarchy/themes"
+themes="$HOME/.config/omarchy/themes"
 
 clone_theme() {
   name=$1
