@@ -26,6 +26,7 @@ hl.unbind("SUPER + SHIFT + B")
 hl.unbind("SUPER + SHIFT + N")
 hl.unbind("SUPER + SHIFT + D")
 hl.unbind("SUPER + SHIFT + SLASH")
+hl.unbind("ALT + SPACE")
 
 -- Displaced defaults (rebound to new keys)
 o.bind("SUPER + ALT + L", "Toggle workspace layout", "omarchy-hyprland-workspace-layout-toggle")
@@ -38,7 +39,8 @@ o.bind("SUPER + ALT + K", "Keybindings", "omarchy-menu-keybindings")
 o.bind("SUPER + CTRL + 0", "Reveal hidden bar widgets", "omarchy-shell romanhan.bar toggleReveal")
 -- The scaling script persists with `sed -i`, which replaces the stowed
 -- monitors.lua symlink. Fold the live file back into the repo afterwards.
-o.bind("SUPER + ALT + SLASH", "Monitor scaling down", "omarchy-hyprland-monitor-scaling down && ~/dotfiles/install-scripts/sync-monitors")
+o.bind("SUPER + ALT + SLASH", "Monitor scaling down",
+  "omarchy-hyprland-monitor-scaling down && ~/dotfiles/install-scripts/sync-monitors")
 
 -- Applications
 o.bind("SUPER + Q", "Close window", hl.dsp.window.close())
