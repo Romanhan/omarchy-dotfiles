@@ -16,7 +16,7 @@ dynamic island bar. `install-dotfiles` installs `stow` and links these packages
 into `~/.config`:
 
 ```
-bash  kitty  hypr  superfile  omarchy  vscode
+bash  kitty  hypr  superfile  vscode
 ```
 
 Finish with `omarchy restart shell`.

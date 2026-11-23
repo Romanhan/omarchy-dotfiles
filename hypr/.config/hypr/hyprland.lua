@@ -3,11 +3,6 @@
 -- Omarchy's bootstrap keeps path setup out of this user config.
 dofile((os.getenv("OMARCHY_PATH") or "/usr/share/omarchy") .. "/default/hypr/bootstrap.lua")
 
--- Disable Omarchy's startup-cursor dance: r6807 sets XCURSOR_THEME=omarchy-startup
--- (a theme with no index.theme), which makes Hyprland 0.56.2-4 SEGV in
--- setCursorFromName right after start. Remove once upstream fixes it.
-omarchy_startup_cursor_pending = false
-
 -- Disable all Omarchy default bindings. Add your own in hypr/bindings.lua.
 -- omarchy_default_bindings = false
 --
@@ -32,3 +27,27 @@ require("default.hypr.toggles")
 
 -- Add any other personal Hyprland configuration below.
 -- o.window("qemu", { workspace = "5" })
+require("hypr.omacast")
+
+-- Cursor theme + size.
+-- The theme string is used as a DIRECTORY name under /usr/share/icons/
+-- (Hyprland builds "<dir>/<theme>/cursors"), so it must be "breeze_cursors"
+-- -- NOT the display name "Breeze Dark" from index.theme's Name= field.
+-- A name with no matching directory fails silently and falls back to
+-- /usr/share/icons/default (Inherits=Adwaita), which is why the cursor
+-- never appeared to change.
+hl.env("XCURSOR_SIZE", "24")
+hl.env("XCURSOR_THEME", "breeze_cursors")
+hl.env("HYPRCURSOR_SIZE", "24")
+hl.env("HYPRCURSOR_THEME", "breeze_cursors")
+
+hl.config({
+  cursor = {
+    -- No hyprcursor themes are installed, so this can only ever fail and
+    -- fall back to XCursor. Go straight to XCursor.
+    enable_hyprcursor = false,
+    -- Let GSettings (org.gnome.desktop.interface) stay the source of truth
+    -- so Hyprland and GTK can never disagree about the cursor.
+    sync_gsettings_theme = true,
+  },
+})
